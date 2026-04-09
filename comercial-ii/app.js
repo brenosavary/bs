@@ -89,7 +89,9 @@ document.addEventListener('DOMContentLoaded', () => {
 async function carregarDados() {
     mostrarSpinner();
     try {
-        const response = await fetch(window.location.origin + '/GRT/DASHBOARD_COMERCIAL_II_dados.rule?sys=GRT');
+        const path = window.location.pathname;
+        const primeiro = path.split('/').filter(Boolean)[0];
+        const response = await fetch(window.location.origin + '/' + primeiro + '/DASHBOARD_COMERCIAL_II_dados.rule?sys=' + ebfGetSystemID());
 
         // 1. Pegamos a resposta como arrayBuffer em vez de .json() direto
         const buffer = await response.arrayBuffer();
@@ -293,7 +295,7 @@ async function buscarNumPedidos() {
     };
 
     const params = new URLSearchParams({
-        sys: 'GRT',
+        sys: ebfGetSystemID(),
         empresas: formatarMultifiltro(state.filtros.empresa),
         vendedores: formatarMultifiltro(state.filtros.vendedor),
         marcas: formatarMultifiltro(state.filtros.marca),
@@ -304,7 +306,9 @@ async function buscarNumPedidos() {
     });
 
     try {
-        const url = window.location.origin + '/GRT/DASHBOARD_COMERCIAL_II_dados_num_pedidos.rule?' + params.toString();
+        const path = window.location.pathname;
+        const primeiro = path.split('/').filter(Boolean)[0];
+        const url = window.location.origin + '/' + primeiro + '/DASHBOARD_COMERCIAL_II_dados_num_pedidos.rule?' + params.toString();
         const response = await fetch(url);
         const data = await response.json();
         state.numPedidos = data.numPedidos || 0;
