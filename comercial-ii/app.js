@@ -89,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
 async function carregarDados() {
     mostrarSpinner();
     try {
-        const response = await fetch('../GRT/DASHBOARD_COMERCIAL_II_dados.rule?sys=GRT');
+        const response = await fetch(window.location.origin + '/GRT/DASHBOARD_COMERCIAL_II_dados.rule?sys=GRT');
 
         // 1. Pegamos a resposta como arrayBuffer em vez de .json() direto
         const buffer = await response.arrayBuffer();
@@ -304,7 +304,7 @@ async function buscarNumPedidos() {
     });
 
     try {
-        const url = `../GRT/DASHBOARD_COMERCIAL_II_dados_num_pedidos.rule?${params.toString()}`;
+        const url = window.location.origin + '/GRT/DASHBOARD_COMERCIAL_II_dados_num_pedidos.rule?' + params.toString();
         const response = await fetch(url);
         const data = await response.json();
         state.numPedidos = data.numPedidos || 0;
