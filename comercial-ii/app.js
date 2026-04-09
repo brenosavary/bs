@@ -89,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
 async function carregarDados() {
     mostrarSpinner();
     try {
-        const response = await fetch('http://127.0.0.1:5000/GRT/DASHBOARD_COMERCIAL_II_dados.rule?sys=GRT');
+        const response = await fetch('../GRT/DASHBOARD_COMERCIAL_II_dados.rule?sys=GRT');
 
         // 1. Pegamos a resposta como arrayBuffer em vez de .json() direto
         const buffer = await response.arrayBuffer();
@@ -304,7 +304,7 @@ async function buscarNumPedidos() {
     });
 
     try {
-        const url = `http://127.0.0.1:5000/GRT/DASHBOARD_COMERCIAL_II_dados_num_pedidos.rule?${params.toString()}`;
+        const url = `../GRT/DASHBOARD_COMERCIAL_II_dados_num_pedidos.rule?${params.toString()}`;
         const response = await fetch(url);
         const data = await response.json();
         state.numPedidos = data.numPedidos || 0;
@@ -318,7 +318,7 @@ function calcularKPIs(vendas) {
     const faturamento = vendas.reduce((sum, v) => sum + v.valor, 0);
     const devolucao = vendas.reduce((sum, v) => sum + v.devolucao, 0);
     const quantidade = vendas.reduce((sum, v) => sum + v.quantidade, 0);
-    
+
     // Novo cálculo do ticket médio baseado no numPedidos da API
     const ticketMedio = state.numPedidos > 0 ? faturamento / state.numPedidos : 0;
 
@@ -357,7 +357,7 @@ function calcularProjecao(periodo, dataFimFiltro, valorTotal) {
 async function atualizarKPIs() {
     // Primeiro busca o número de pedidos atualizado com os filtros
     await buscarNumPedidos();
-    
+
     const vendas = filtrarVendas();
     const kpis = calcularKPIs(vendas);
 
@@ -501,11 +501,11 @@ function renderizarGraficoDimensao(containerId, dados, dimensao) {
     if (state.agrupamentos.tipoGrafico === 'barras') {
         // Calcula altura dinâmica: ~30px por item + margem
         const alturaGrafico = Math.max(420, dados.length * 30 + 60);
-        
+
         Highcharts.chart(containerId, {
-            chart: { 
-                type: 'bar', 
-                backgroundColor: 'transparent', 
+            chart: {
+                type: 'bar',
+                backgroundColor: 'transparent',
                 zIndex: 0,
                 height: alturaGrafico,
                 scrollablePlotArea: {
@@ -514,7 +514,7 @@ function renderizarGraficoDimensao(containerId, dados, dimensao) {
                 }
             },
             title: { text: null },
-            xAxis: { 
+            xAxis: {
                 categories: dados.map(d => d.label),
                 scrollbar: { enabled: true }
             },
