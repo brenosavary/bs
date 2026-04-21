@@ -427,6 +427,31 @@ function inicializarEventos() {
         atualizarGraficosModal();
     });
 
+    // Adicionado: Abrir/Fechar Filtros
+    document.getElementById('btnAbrirFiltros')?.addEventListener('click', () => {
+        const drawer = document.getElementById('drawerFiltros');
+        if (drawer) {
+            drawer.classList.add('ativo');
+            document.body.style.overflow = 'hidden';
+        }
+    });
+
+    document.getElementById('btnFecharFiltros')?.addEventListener('click', () => {
+        const drawer = document.getElementById('drawerFiltros');
+        if (drawer) {
+            drawer.classList.remove('ativo');
+            document.body.style.overflow = 'auto';
+        }
+    });
+
+    document.getElementById('drawerOverlay')?.addEventListener('click', () => {
+        const drawer = document.getElementById('drawerFiltros');
+        if (drawer) {
+            drawer.classList.remove('ativo');
+            document.body.style.overflow = 'auto';
+        }
+    });
+
     // Busca nos filtros
     document.querySelectorAll('.filtro-busca').forEach(input => {
         input.addEventListener('input', (e) => {
