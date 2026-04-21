@@ -737,7 +737,15 @@ function renderizarGraficoPeriodo(containerId, dados, type = 'column') {
     });
 
     Highcharts.chart(containerId, {
-        chart: { type: 'column', backgroundColor: 'transparent', zIndex: 0 },
+        chart: { 
+            type: 'column', 
+            backgroundColor: 'transparent', 
+            zIndex: 0,
+            scrollablePlotArea: {
+                minWidth: window.innerWidth < 768 ? 600 : 0,
+                scrollPositionX: 0
+            }
+        },
         title: { text: null },
         xAxis: { categories: dados.map(d => d.periodo), crosshair: true },
         yAxis: [{
@@ -823,6 +831,7 @@ function renderizarGraficoDimensao(containerId, dados, dimensao) {
                 height: alturaGrafico,
                 scrollablePlotArea: {
                     minHeight: alturaGrafico,
+                    minWidth: window.innerWidth < 768 ? 500 : 0,
                     scrollPositionX: 0
                 }
             },
@@ -872,7 +881,11 @@ function renderizarGraficoDimensao(containerId, dados, dimensao) {
         // Para gráficos de pizza, limitar a 15 itens
         const dadosPizza = dados.slice(0, 15);
         Highcharts.chart(containerId, {
-            chart: { type: 'pie', backgroundColor: 'transparent', zIndex: 0 },
+            chart: { 
+                type: 'pie', 
+                backgroundColor: 'transparent', 
+                zIndex: 0
+            },
             title: { text: null },
             tooltip: {
                 outside: true,
@@ -937,15 +950,10 @@ function atualizarGraficosModal() {
     const valorMinimo = state.modalCliente.valorMinimo;
 
     // Gráfico de Período no Modal
-    renderizarGraficoPeriodo('modal-chart-periodo', agruparPorPeriodo(vendas, state.agrupamentos.periodo));
+    renderizarGraficoPeriodo('chart-cliente-periodo', agruparPorPeriodo(vendas, state.agrupamentos.periodo));
 
-    // Gráfico de Marcas no Modal
-    const dadosMarcas = agruparPorDimensao(vendas, 'marca').filter(d => d.valor >= valorMinimo);
-    renderizarGraficoDimensao('modal-chart-marcas', dadosMarcas, 'marca');
-
-    // Gráfico de Grupos no Modal
-    const dadosGrupos = agruparPorDimensao(vendas, 'grupo').filter(d => d.valor >= valorMinimo);
-    renderizarGraficoDimensao('modal-chart-grupos', dadosGrupos, 'grupo');
+    // Gráfico Total no Modal
+    renderizarGraficoDimensao('chart-cliente-total', agruparPorDimensao(vendas, 'marca', 15), 'marca');
 }
 
 function abrirModalAnalitico(cliente = null, dimensao = null) {

@@ -36,6 +36,15 @@ body {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+    position: relative;
+}
+
+html, body {
+    max-width: 100%;
+    overflow-x: hidden;
 }
 
 /* Header */
@@ -239,6 +248,18 @@ body {
     border-bottom: 1px solid var(--border);
 }
 
+@media (max-width: 480px) {
+    .kpi-container {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 350px) {
+    .kpi-container {
+        grid-template-columns: 1fr;
+    }
+}
+
 .kpi-card {
     background: var(--surface);
     padding: 0.6rem 0.75rem;
@@ -384,6 +405,8 @@ body {
     border-radius: var(--radius);
     border: 1px solid var(--border);
     box-shadow: var(--shadow-sm);
+    min-width: 0; /* Permite que o flex/grid item encolha abaixo do conteúdo */
+    overflow: hidden; /* Garante que o conteúdo não vaze o wrapper */
 }
 
 .chart-wrapper.full-width {
@@ -402,6 +425,8 @@ body {
     min-height: 300px;
     position: relative;
     z-index: 0;
+    width: 100%;
+    overflow-x: hidden; /* Evita scroll desnecessário em desktop */
 }
 
 .chart-placeholder.tall {
@@ -622,6 +647,19 @@ body {
     .btn-analitico {
         width: 100%;
     }
+
+    .graficos-container {
+        grid-template-columns: 1fr;
+    }
+
+    .chart-placeholder {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .chart-placeholder.tall {
+        min-width: auto;
+    }
 }
 
 /* Spinner Overlay */
@@ -771,13 +809,15 @@ body {
 /* Estilos para Responsividade do Gráfico de Período */
 .chart-scroll-container {
     width: 100%;
+    max-width: 100%;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    display: block;
 }
 
 @media (max-width: 768px) {
     .chart-scroll-container .chart-placeholder {
-        min-width: 600px; /* Garante que o gráfico não fique truncado em telas pequenas */
+        min-width: auto;
     }
 }
 
