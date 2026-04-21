@@ -671,30 +671,49 @@ function agruparPorDimensao(vendas, dimensao, limite = null) {
         const valorTotal = venda.valor_produto + venda.valor_servico;
         agrupado[chave] = (agrupado[chave] || 0) + valorTotal;
     });
-    let resultado = Object.entries(agrupado).map(([label, valor]) => ({ label, valor })).sort((a, b) => b.valor - a.valor);
+
+    let resultado = Object.entries(agrupado).map(([label, valor]) => ({ label, valor }));
+
+    // Se for no modal e a dimensão for cliente, aplicar filtro de valor mínimo
+    if (dimensao === 'cliente' && state.modalCliente.valorMinimo > 0) {
+        resultado = resultado.filter(item => item.valor >= state.modalCliente.valorMinimo);
+    }
+
+    resultado.sort((a, b) => b.valor - a.valor);
     if (limite) resultado = resultado.slice(0, limite);
     return resultado;
 }
 
 function agruparClientesPorPeriodo(vendas, tipo) {
-    const clientes = [...new Set(vendas.map(v => v.cliente))].sort();
-    const agrupado = {};
+    const clientesUnicos = [...new Set(vendas.map(v => v.cliente))].sort();
+    const periodos = [...new Set(vendas.map(v => {
+        const data = new Date(v.data);
+        return tipo === 'ano' ? data.getFullYear().toString() : `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
+    }))].sort();
 
-    clientes.forEach(cliente => {
+    const agrupado = {};
+    const totaisPorCliente = {};
+
+    clientesUnicos.forEach(cliente => {
         agrupado[cliente] = {};
+        totaisPorCliente[cliente] = 0;
+        periodos.forEach(p => agrupado[cliente][p] = 0);
     });
 
     vendas.forEach(venda => {
         const data = new Date(venda.data);
         let chave = tipo === 'ano' ? data.getFullYear().toString() : `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
-
-        if (!agrupado[venda.cliente][chave]) {
-            agrupado[venda.cliente][chave] = 0;
-        }
-        agrupado[venda.cliente][chave] += venda.valor;
+        
+        const valorTotal = venda.valor_produto + venda.valor_servico;
+        agrupado[venda.cliente][chave] += valorTotal;
+        totaisPorCliente[venda.cliente] += valorTotal;
     });
 
-    return { clientes, dados: agrupado };
+    // Aplicar filtro de valor mínimo se estiver no modal
+    const valorMinimo = state.modalCliente.valorMinimo || 0;
+    const clientesFiltrados = clientesUnicos.filter(cliente => totaisPorCliente[cliente] >= valorMinimo);
+
+    return { clientes: clientesFiltrados, periodos, dados: agrupado };
 }
 
 // ============================================================================
@@ -732,17 +751,20 @@ function renderizarGraficoPeriodo(containerId, dados, type = 'column') {
     if (isSeparado) {
         series.push({
             name: 'Produto',
+            type: type,
             data: dados.map(d => d.valor_produto),
             color: '#3B82F6'
         });
         series.push({
             name: 'Serviço',
+            type: type,
             data: dados.map(d => d.valor_servico),
             color: '#10B981'
         });
     } else {
         series.push({
             name: 'Faturamento',
+            type: type,
             data: dados.map(d => d.valor_total),
             color: '#3B82F6'
         });
@@ -763,7 +785,7 @@ function renderizarGraficoPeriodo(containerId, dados, type = 'column') {
 
     Highcharts.chart(containerId, {
         chart: { 
-            type: 'column', 
+            type: type, 
             backgroundColor: 'transparent', 
             zIndex: 0,
             scrollablePlotArea: {
@@ -890,7 +912,7 @@ function renderizarGraficoDimensao(containerId, dados, dimensao) {
                     point: {
                         events: {
                             click: function () {
-                                abrirModalCliente(this.category, dimensao);
+                                abrirModalCliente(this.name || this.category, dimensao);
                             }
                         }
                     }
@@ -898,7 +920,11 @@ function renderizarGraficoDimensao(containerId, dados, dimensao) {
             },
             series: [{
                 name: 'Faturamento',
-                data: dados.map((d, i) => ({ y: d.valor, color: cores[i % cores.length] }))
+                data: dados.map((d, i) => ({ 
+                    name: d.label, 
+                    y: d.valor, 
+                    color: cores[i % cores.length] 
+                }))
             }],
             credits: { enabled: false }
         });
@@ -974,11 +1000,11 @@ function atualizarGraficosModal() {
     const vendas = filtrarVendas(false, state.modalCliente.cliente, state.modalCliente.dimensao);
     const valorMinimo = state.modalCliente.valorMinimo;
 
-    // Gráfico de Período no Modal
-    renderizarGraficoPeriodo('chart-cliente-periodo', agruparPorPeriodo(vendas, state.agrupamentos.periodo));
+    // Gráfico de Período no Modal (Cada linha é um cliente, eixo X são os meses)
+    renderizarGraficoClientesPeriodo('chart-cliente-periodo', agruparClientesPorPeriodo(vendas, state.agrupamentos.periodo));
 
-    // Gráfico Total no Modal
-    renderizarGraficoDimensao('chart-cliente-total', agruparPorDimensao(vendas, 'marca', 15), 'marca');
+    // Gráfico Total no Modal (Valor Total por Cliente)
+    renderizarGraficoDimensao('chart-cliente-total', agruparPorDimensao(vendas, 'cliente', 15), 'cliente');
 }
 
 function abrirModalAnalitico(cliente = null, dimensao = null) {
@@ -1090,6 +1116,16 @@ function formatarMoeda(valor) {
     return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+function abreviarValor(valor) {
+    if (valor >= 1000000) {
+        return (valor / 1000000).toFixed(1).replace('.', ',') + ' Mi';
+    }
+    if (valor >= 1000) {
+        return (valor / 1000).toFixed(1).replace('.', ',') + ' k';
+    }
+    return valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 function mostrarSpinner() {
     document.getElementById('spinnerOverlay').classList.add('ativo');
 }
@@ -1137,4 +1173,88 @@ function exportarExcel() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Vendas");
     XLSX.writeFile(wb, "vendas_analitico.xlsx");
+}
+
+function renderizarGraficoClientesPeriodo(containerId, resultado) {
+    const { clientes, periodos, dados } = resultado;
+    
+    const series = clientes.map(cliente => ({
+        name: cliente,
+        type: 'line',
+        data: periodos.map(p => dados[cliente][p] || 0)
+    }));
+
+    Highcharts.chart(containerId, {
+        chart: { 
+            type: 'line', 
+            backgroundColor: 'transparent', 
+            zIndex: 0,
+            scrollablePlotArea: {
+                minWidth: window.innerWidth < 768 ? 600 : 0,
+                scrollPositionX: 0
+            }
+        },
+        title: { text: null },
+        xAxis: { categories: periodos, crosshair: true },
+        yAxis: {
+            title: { text: null },
+            labels: { format: 'R$ {value:,.0f}' }
+        },
+        tooltip: {
+            shared: true,
+            useHTML: true,
+            backgroundColor: '#ffffff',
+            borderColor: '#ccc',
+            borderWidth: 1,
+            shadow: true,
+            style: {
+                fontSize: '12px',
+                zIndex: 9999
+            },
+            formatter: function () {
+                if (!this.points) return '';
+                const pontosOrdenados = this.points.slice().sort((a, b) => b.y - a.y);
+                let s = `<div style="padding: 5px;"><b>${this.x}</b><br/>`;
+                let totalMes = 0;
+                pontosOrdenados.forEach(point => {
+                    if (point.y > 0) {
+                        s += `<span style="color:${point.color}">\u25CF</span> ${point.series.name}: <b>${formatarMoeda(point.y)}</b><br/>`;
+                        totalMes += point.y;
+                    }
+                });
+                if (pontosOrdenados.length > 1) {
+                    s += `<hr style="margin: 5px 0; border: none; border-top: 1px solid #ccc;">`;
+                    s += `<b>Total:</b> <b>${formatarMoeda(totalMes)}</b>`;
+                }
+                s += `</div>`;
+                return s;
+            }
+        },
+        plotOptions: {
+            line: {
+                dataLabels: {
+                    enabled: true,
+                    formatter: function() {
+                        return this.y > 0 ? abreviarValor(this.y) : null;
+                    },
+                    style: {
+                        fontSize: '10px',
+                        fontWeight: 'normal',
+                        textOutline: 'none'
+                    }
+                },
+                marker: { enabled: true, radius: 4 },
+                lineWidth: 2,
+                states: { hover: { lineWidth: 3 } }
+            }
+        },
+        series: series,
+        legend: {
+            enabled: true,
+            align: 'center',
+            verticalAlign: 'bottom',
+            layout: 'horizontal'
+        },
+        credits: { enabled: false }
+    });
 }
