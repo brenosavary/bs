@@ -432,7 +432,7 @@ function inicializarEventos() {
     window.abrirFiltros = function() {
         const drawer = document.getElementById('drawerFiltros');
         if (drawer) {
-            drawer.classList.add('ativo');
+            drawer.style.display = 'flex';
             document.body.style.overflow = 'hidden';
         }
     };
@@ -440,7 +440,7 @@ function inicializarEventos() {
     window.fecharFiltros = function() {
         const drawer = document.getElementById('drawerFiltros');
         if (drawer) {
-            drawer.classList.remove('ativo');
+            drawer.style.display = 'none';
             document.body.style.overflow = 'auto';
         }
     };
@@ -1052,15 +1052,15 @@ function fecharModalProjecao() {
 }
 
 function renderizarTabelaComSpinner() {
-    const container = document.getElementById('tabela-vendas-body');
+    const container = document.getElementById('tabelaVendas');
     if (container) container.innerHTML = '<tr><td colspan="15" style="text-align:center; padding: 2rem;">Carregando...</td></tr>';
     setTimeout(() => renderizarTabelaAnalitica(), 100);
 }
 
 function renderizarTabelaAnalitica(cliente = null, dimensao = null) {
     const vendas = filtrarVendas(true, cliente, dimensao);
-    const tbody = document.getElementById('tabela-vendas-body');
-    const tfoot = document.getElementById('tabela-vendas-footer');
+    const tbody = document.getElementById('tabelaVendas');
+    const tfoot = document.getElementById('tabelaVendasFooter');
 
     if (!tbody) return;
 
@@ -1079,24 +1079,21 @@ function renderizarTabelaAnalitica(cliente = null, dimensao = null) {
             <td>${v.tipo_pagamento}</td>
             <td>${v.tipo_documento}</td>
             <td>${v.status_documento}</td>
-            <td class="numero">${formatarMoeda(v.valor_produto)}</td>
-            <td class="numero">${formatarMoeda(v.valor_servico)}</td>
             <td class="numero">${formatarMoeda(v.valor_produto + v.valor_servico)}</td>
+            <td class="numero">${formatarMoeda(v.devolucao)}</td>
         </tr>
     `).join('');
 
     const totais = vendas.reduce((acc, v) => ({
-        produto: acc.produto + v.valor_produto,
-        servico: acc.servico + v.valor_servico,
-        total: acc.total + (v.valor_produto + v.valor_servico)
-    }), { produto: 0, servico: 0, total: 0 });
+        total: acc.total + (v.valor_produto + v.valor_servico),
+        devolucao: acc.devolucao + v.devolucao
+    }), { total: 0, devolucao: 0 });
 
     tfoot.innerHTML = `
         <tr>
             <td colspan="13">TOTAIS (${vendas.length} registros)</td>
-            <td class="numero">${formatarMoeda(totais.produto)}</td>
-            <td class="numero">${formatarMoeda(totais.servico)}</td>
             <td class="numero">${formatarMoeda(totais.total)}</td>
+            <td class="numero">${formatarMoeda(totais.devolucao)}</td>
         </tr>
     `;
 }

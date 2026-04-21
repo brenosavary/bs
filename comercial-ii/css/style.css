@@ -161,7 +161,7 @@ html, body {
 }
 
 .drawer-filtros.ativo {
-    display: flex;
+    display: flex !important;
 }
 
 .drawer-overlay {
