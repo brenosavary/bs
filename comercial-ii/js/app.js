@@ -153,7 +153,7 @@ async function carregarDados() {
             document.getElementById('dataFim').value = state.filtros.dataFim;
         }
         
-        const response = await fetch(window.location.origin + '/' + primeiro + '/DASHBOARD_COMERCIAL_II_dados.rule?sys=' + systemID);
+        const response = await fetch(window.location.origin + '/' + primeiro + '/DASHBOARD_COMERCIAL_II_dados.rule?sys=' + systemID + '&dataIni=' + (state.filtros.dataInicio || '') + '&dataFin=' + (state.filtros.dataFim || ''));
 
         // 1. Pegamos a resposta como arrayBuffer em vez de .json() direto
         const buffer = await response.arrayBuffer();
