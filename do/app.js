@@ -19,56 +19,38 @@ function renderLayout() {
         </header>
 
         <main class="page-main">
-            <section class="card report-summary">
-                <div class="summary-top">
-                    <div>
-                        <span class="summary-label">Relatório</span>
-                        <h2 id="report-number"># -</h2>
-                        <p id="report-date">-</p>
+            <div class="top-cards" style="display:flex; gap:1rem; flex-wrap:wrap;">
+                <section class="card report-summary" style="flex:1 1 320px; min-width:280px;">
+                    <div class="summary-top">
+                        <div>
+                            <span class="summary-label">Relatório</span>
+                            <h2 id="report-number"># -</h2>
+                            <p id="report-date">-</p>
+                        </div>
+                        <div class="status-badge status-default" id="meta-status">Carregando</div>
                     </div>
-                    <div class="status-badge status-default" id="meta-status">Carregando</div>
-                </div>
-                <div class="summary-meta">
-                    <p id="report-work"><strong>Obra:</strong> -</p>
-                    <p id="report-client"><strong>Cliente:</strong> -</p>
-                    <p id="report-created"><strong>Criado por:</strong> -</p>
-                    <p id="report-approved"><strong>Aprovação:</strong> -</p>
-                </div>
-            </section>
+                    <div class="summary-meta">
+                        <p id="report-work"><strong>Obra:</strong> -</p>
+                        <p id="report-client"><strong>Cliente:</strong> -</p>
+                        <p id="report-created"><strong>Criado por:</strong> -</p>
+                        <p id="report-approved"><strong>Aprovação:</strong> -</p>
+                    </div>
+                </section>
 
-            <section class="card period-card">
-                <div class="period-line">
-                    <p><strong>Início:</strong> <span id="report-start">-</span></p>
-                    <p><strong>Término:</strong> <span id="report-end">-</span></p>
-                </div>
-                <div class="deadline-line">
-                    <strong>Prazo:</strong> <span id="report-deadline">-</span>
-                </div>
-                <div class="progress-bar">
-                    <div id="progress-fill" class="progress-fill"></div>
-                </div>
-                <p class="progress-label" id="report-progress">-</p>
-            </section>
-
-            <section class="card weather-summary">
-                <div class="section-header">
-                    <h2>Tempo / Condições</h2>
-                </div>
-                <div class="weather-grid">
-                    <div class="weather-item">
-                        <span>Manhã</span>
-                        <strong id="morning-status">Praticável</strong>
+                <section class="card period-card" style="flex:1 1 240px; min-width:240px;">
+                    <div class="period-line">
+                        <p><strong>Início:</strong> <span id="report-start">-</span></p>
+                        <p><strong>Término:</strong> <span id="report-end">-</span></p>
                     </div>
-                    <div class="weather-item">
-                        <span>Tarde</span>
-                        <strong id="afternoon-status">Praticável</strong>
+                    <div class="deadline-line">
+                        <strong>Prazo:</strong> <span id="report-deadline">-</span>
                     </div>
-                    <div class="weather-item">
-                        <span>Noite</span>
-                        <strong id="night-status">-</strong>
+                    <div class="progress-bar">
+                        <div id="progress-fill" class="progress-fill"></div>
                     </div>
-                </div>
-            </section>
+                    <p class="progress-label" id="report-progress">-</p>
+                </section>
+            </div>
 
             <section class="card crew-summary">
                 <div class="section-header">
