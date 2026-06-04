@@ -132,7 +132,7 @@ function renderLayout() {
     `;
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+function initApp() {
     renderLayout();
 
     const inputDate = document.getElementById("current-date");
@@ -160,7 +160,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function fetchDiario(data) {
         const baseUrl = 'https://odin.reviverepossivel.com/ODIN5/MAN_DO_dados.rule';
-        const obraId = getQueryParam('id_obra');
+        const obraId = parent.ebfGetSessionAttribute('vsManObraID');
         const requestUrl = `${baseUrl}?sys=WWW&data=${encodeURIComponent(data)}&id_obra=${encodeURIComponent(obraId)}`;
 
         fetch(requestUrl)
@@ -358,4 +358,6 @@ document.addEventListener("DOMContentLoaded", () => {
         setHTML("gallery-fotos", '<div class="photo-card"><p style="padding: 18px;">Sem fotos.</p></div>');
         console.warn(mensagem);
     }
-});
+}
+
+document.addEventListener("DOMContentLoaded", initApp);
