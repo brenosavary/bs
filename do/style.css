@@ -1,0 +1,409 @@
+:root {
+    --primary-color: #1d4ed8;
+    --primary-soft: #eff6ff;
+    --background-color: #f3f4f6;
+    --card-background: #ffffff;
+    --text-color: #0f172a;
+    --secondary-color: #475569;
+    --border-color: #d1d5db;
+    --success-color: #16a34a;
+    --warning-color: #f59e0b;
+    --danger-color: #ef4444;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    margin: 0;
+    min-height: 100vh;
+}
+
+button {
+    font: inherit;
+}
+
+.page-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 18px 16px 12px;
+    background: white;
+    border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+}
+
+.page-header-left {
+    max-width: 720px;
+}
+
+.eyebrow {
+    display: inline-block;
+    margin-bottom: 8px;
+    color: var(--primary-color);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.72rem;
+}
+
+.page-header h1 {
+    margin: 0 0 6px;
+    font-size: clamp(1.6rem, 2.3vw, 2.2rem);
+    line-height: 1.05;
+}
+
+.page-header p {
+    margin: 0;
+    color: var(--secondary-color);
+    font-size: 0.95rem;
+}
+
+.page-header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.date-navigator {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.nav-btn {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 10px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-weight: 700;
+    min-width: 42px;
+}
+
+.nav-btn:hover {
+    background-color: #1e40af;
+}
+
+input[type="date"] {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 10px 12px;
+    background: white;
+}
+
+.page-main {
+    width: 100%;
+    max-width: none;
+    margin: 16px 0 24px;
+    padding: 0 16px 24px;
+    display: grid;
+    gap: 16px;
+}
+
+.card {
+    background: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 18px;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.03);
+}
+
+.report-summary .summary-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.summary-label {
+    display: inline-block;
+    font-size: 0.85rem;
+    letter-spacing: 0.08em;
+    color: var(--primary-color);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+
+.report-summary h2 {
+    margin: 0;
+    font-size: 2rem;
+    color: var(--text-color);
+}
+
+.report-summary p {
+    margin: 8px 0 0;
+    color: var(--secondary-color);
+    line-height: 1.7;
+}
+
+.summary-meta {
+    display: grid;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.summary-meta p {
+    margin: 0;
+    color: var(--secondary-color);
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 18px;
+    border-radius: 999px;
+    font-weight: 700;
+    color: white;
+    min-width: 140px;
+    text-align: center;
+}
+
+.status-default { background-color: #64748b; }
+.status-aprovado { background-color: var(--success-color); }
+.status-em-andamento { background-color: #0ea5e9; }
+.status-paralisado { background-color: var(--danger-color); }
+.status-inexistente { background-color: var(--warning-color); color: #0f172a; }
+
+.progress-bar {
+    height: 12px;
+    border-radius: 999px;
+    background: #e2e8f0;
+    overflow: hidden;
+    margin: 14px 0 8px;
+}
+
+.progress-fill {
+    width: 0%;
+    height: 100%;
+    background: var(--primary-color);
+    border-radius: 999px;
+    transition: width 0.4s ease;
+}
+
+.progress-label {
+    margin: 0;
+    color: var(--secondary-color);
+    font-size: 0.95rem;
+    font-weight: 700;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+    margin-top: 8px;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 620px;
+}
+
+.data-table th,
+.data-table td {
+    padding: 14px 12px;
+    border-bottom: 1px solid #e2e8f0;
+    text-align: left;
+    color: var(--secondary-color);
+}
+
+.data-table th {
+    background: var(--primary-soft);
+    color: var(--text-color);
+    font-weight: 700;
+}
+
+.data-table tbody tr:nth-child(even) {
+    background: #f8fafc;
+}
+
+.data-table .empty-row td {
+    text-align: center;
+    color: var(--secondary-color);
+    padding: 20px 12px;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.info-card {
+    border-radius: 14px;
+    background: var(--primary-soft);
+    padding: 16px;
+}
+
+.info-title {
+    display: block;
+    margin-bottom: 12px;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.info-card p {
+    margin: 8px 0;
+    color: var(--text-color);
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.section-header h2 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--text-color);
+}
+
+.weather-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.weather-item {
+    background: var(--primary-soft);
+    border-radius: 14px;
+    padding: 16px;
+    text-align: center;
+}
+
+.weather-item span {
+    display: block;
+    color: var(--secondary-color);
+    margin-bottom: 10px;
+    font-weight: 700;
+}
+
+.weather-item strong {
+    font-size: 1rem;
+    color: var(--text-color);
+}
+
+.list-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+}
+
+.crew-card,
+.equipment-item,
+.activity-card,
+.incident-card {
+    background: #f8fafc;
+    border-radius: 16px;
+    padding: 18px;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.crew-card strong,
+.activity-card strong,
+.equipment-item strong {
+    display: block;
+    margin-bottom: 10px;
+    color: var(--text-color);
+}
+
+.list-stack {
+    display: grid;
+    gap: 12px;
+}
+
+.activity-grid {
+    display: grid;
+    gap: 16px;
+}
+
+.activity-card p,
+.incident-card p {
+    margin: 8px 0 0;
+    color: var(--secondary-color);
+    line-height: 1.7;
+}
+
+.activity-card .activity-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 14px;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.incident-list {
+    display: grid;
+    gap: 16px;
+}
+
+.text-block {
+    background: #f8fafc;
+    border-left: 4px solid var(--primary-color);
+    border-radius: 0 0 0 0;
+    padding: 18px;
+    color: var(--secondary-color);
+    line-height: 1.8;
+    margin: 0;
+}
+
+.gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+}
+
+.photo-card {
+    background: white;
+    border-radius: 18px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+}
+
+.photo-card img {
+    width: 100%;
+    height: 190px;
+    object-fit: cover;
+    display: block;
+}
+
+.photo-card p {
+    padding: 14px;
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--secondary-color);
+}
+
+@media (max-width: 900px) {
+    .info-grid,
+    .weather-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .page-header {
+        padding: 18px 16px 16px;
+    }
+
+    .page-header-right {
+        width: 100%;
+        justify-content: flex-start;
+    }
+}
