@@ -171,10 +171,17 @@ document.addEventListener("DOMContentLoaded", () => {
         fetchDiario(novaDataStr);
     }
 
-    function fetchDiario(data) {
-        const urlMock = `diario-${data}.json`;
+    function getQueryParam(name) {
+        const params = new URLSearchParams(window.location.search);
+        return params.get(name) || '';
+    }
 
-        fetch(urlMock)
+    function fetchDiario(data) {
+        const baseUrl = 'https://odin.reviverepossivel.com/ODIN5/MAN_DO_dados.rule';
+        const obraId = getQueryParam('id_obra');
+        const requestUrl = `${baseUrl}?sys=WWW&data=${encodeURIComponent(data)}&id_obra=${encodeURIComponent(obraId)}`;
+
+        fetch(requestUrl)
             .then(response => {
                 if (!response.ok) {
                     throw new Error("Relatório não encontrado para esta data.");
