@@ -10,10 +10,13 @@ function renderLayout() {
                 <p id="report-subtitle">Aguarde enquanto carregamos os dados.</p>
             </div>
             <div class="page-header-right">
-                <div class="date-navigator">
-                    <button id="btn-prev" class="nav-btn">&lt;</button>
-                    <input type="date" id="current-date" value="2026-05-20">
-                    <button id="btn-next" class="nav-btn">&gt;</button>
+                <div class="header-actions" style="display:flex; gap:0.5rem; align-items:center;">
+                    <button id="btn-fullscreen" class="nav-btn">Tela cheia</button>
+                    <div class="date-navigator">
+                        <button id="btn-prev" class="nav-btn">&lt;</button>
+                        <input type="date" id="current-date" value="2026-05-20">
+                        <button id="btn-next" class="nav-btn">&gt;</button>
+                    </div>
                 </div>
             </div>
         </header>
@@ -39,11 +42,11 @@ function renderLayout() {
 
                 <section class="card period-card" style="flex:1 1 240px; min-width:240px;">
                     <div class="period-line">
-                        <p><strong>Início:</strong> <span id="report-start">-</span></p>
-                        <p><strong>Término:</strong> <span id="report-end">-</span></p>
+                        <p><strong>Início:</strong>&nbsp;<span id="report-start">-</span></p>
+                        <p><strong>Término:</strong>&nbsp;<span id="report-end">-</span></p>
                     </div>
                     <div class="deadline-line">
-                        <strong>Prazo:</strong> <span id="report-deadline">-</span>
+                        <strong>Prazo:</strong>&nbsp;<span id="report-deadline">-</span>
                     </div>
                     <div class="progress-bar">
                         <div id="progress-fill" class="progress-fill"></div>
@@ -138,10 +141,18 @@ function initApp() {
     const inputDate = document.getElementById("current-date");
     const btnPrev = document.getElementById("btn-prev");
     const btnNext = document.getElementById("btn-next");
+    const btnFullscreen = document.getElementById("btn-fullscreen");
 
     inputDate.addEventListener("change", () => fetchDiario(inputDate.value));
     btnPrev.addEventListener("click", () => alterarDia(-1));
     btnNext.addEventListener("click", () => alterarDia(1));
+    btnFullscreen?.addEventListener("click", toggleFullScreen);
+
+    document.addEventListener("fullscreenchange", () => {
+        if (!document.fullscreenElement) {
+            btnFullscreen && (btnFullscreen.innerText = "Tela cheia");
+        }
+    });
 
     fetchDiario(inputDate.value);
 
@@ -158,27 +169,72 @@ function initApp() {
         return params.get(name) || '';
     }
 
-    function fetchDiario(data) {
-        const baseUrl = 'https://odin.reviverepossivel.com/ODIN5/MAN_DO_dados.rule';
-        const obraId = parent.ebfGetSessionAttribute('vsManObraID');
-        const requestUrl = `${baseUrl}?sys=WWW&data=${encodeURIComponent(data)}&id_obra=${encodeURIComponent(obraId)}`;
+    function toggleFullScreen() {
+        const app = document.getElementById("app");
+        const btnFullscreen = document.getElementById("btn-fullscreen");
+        if (!app) return;
 
-        fetch(requestUrl)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error("Relatório não encontrado para esta data.");
-                }
-                return response.json();
-            })
-            .then(dados => {
-                try {
-                    renderizarDiario(dados);
-                } catch (erro) {
-                    tratarErro(erro.message);
-                }
-            })
-            .catch(erro => tratarErro(erro.message));
+        const target = app;
+
+        if (!document.fullscreenElement) {
+            if (target.requestFullscreen) {
+                target.requestFullscreen();
+            } else if (target.webkitRequestFullscreen) {
+                target.webkitRequestFullscreen();
+            } else if (target.msRequestFullscreen) {
+                target.msRequestFullscreen();
+            }
+            app.style.minHeight = '100vh';
+            app.style.height = '100vh';
+            app.style.overflowY = 'auto';
+            app.style.overflowX = 'hidden';
+            if (btnFullscreen) btnFullscreen.innerText = "Sair tela cheia";
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            } else if (document.msExitFullscreen) {
+                document.msExitFullscreen();
+            }
+            app.style.minHeight = '';
+            app.style.height = '';
+            app.style.overflowY = '';
+            app.style.overflowX = '';
+            if (btnFullscreen) btnFullscreen.innerText = "Tela cheia";
+        }
     }
+
+function fetchDiario(data) {
+    const baseUrl = 'https://odin.reviverepossivel.com/ODIN5/MAN_DO_dados.rule';
+    const obraId = parent.ebfGetSessionAttribute('vsManObraID');
+    const requestUrl = `${baseUrl}?sys=WWW&data=${encodeURIComponent(data)}&id_obra=${encodeURIComponent(obraId)}`;
+
+    fetch(requestUrl)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error("Relatório não encontrado para esta data.");
+            }
+            // Em vez de response.json(), pegamos os dados brutos (bytes)
+            return response.arrayBuffer(); 
+        })
+        .then(buffer => {
+            // Criamos um decodificador forçando o charset correto (ISO-8859-1 / Latin1)
+            const decoder = new TextDecoder('iso-8859-1');
+            const textoDecodificado = decoder.decode(buffer);
+            
+            // Agora que o texto está com os acentos corrigidos, transformamos em JSON
+            return JSON.parse(textoDecodificado);
+        })
+        .then(dados => {
+            try {
+                renderizarDiario(dados);
+            } catch (erro) {
+                tratarErro(erro.message);
+            }
+        })
+        .catch(erro => tratarErro(erro.message));
+}
 
     function setText(id, value) {
         const element = document.getElementById(id);
@@ -220,10 +276,10 @@ function initApp() {
         const reportNumber = dados.NUMERO_RELATORIO || dados.RELATORIO_NUMERO || dados.RELATORIO || dados.ID || '-';
         setText("report-number", reportNumber);
         setText("report-date", formatDateLabel(dados.DATA_DIARIO));
-        setHTML("report-work", `<strong>Obra:</strong> ${dados.OBRA_NOME || '-'}`);
-        setHTML("report-client", `<strong>Cliente:</strong> ${dados.CLIENTE || '-'}`);
-        setHTML("report-created", `<strong>Criado por:</strong> ${dados.CRIADO_POR || dados.RESPONSAVEL || '-'}`);
-        setHTML("report-approved", `<strong>Aprovação:</strong> ${dados.APROVACAO || '-'}`);
+        setHTML("report-work", `<strong>Obra:</strong>&nbsp;${dados.OBRA_NOME || '-'}`);
+        setHTML("report-client", `<strong>Cliente:</strong>&nbsp;${dados.CLIENTE || '-'}`);
+        setHTML("report-created", `<strong>Criado por:</strong>&nbsp;${dados.CRIADO_POR || dados.RESPONSAVEL || '-'}`);
+        setHTML("report-approved", `<strong>Aprovação:</strong>&nbsp;${dados.APROVACAO || '-'}`);
 
         const statusLabel = dados.STATUS || 'PENDENTE';
         setText("meta-status", statusLabel);
@@ -233,8 +289,8 @@ function initApp() {
         setText("meta-responsavel", dados.RESPONSAVEL || '-');
         setText("meta-status-small", statusLabel);
 
-        setText("report-start", `Início: ${dados.INICIO || '-'}`);
-        setText("report-end", `Término: ${dados.TERMINO || '-'}`);
+        setText("report-start", dados.INICIO || '-');
+        setText("report-end", dados.TERMINO || '-');
 
         const prazoDias = Number(dados.PRAZO);
         const diasDecorridos = Number(dados.DIAS_DECORRIDOS);
@@ -261,7 +317,7 @@ function initApp() {
                 <tr>
                     <td>${mo.FUNCOES || '-'}</td>
                     <td>${mo.QUANTIDADE || '-'}</td>
-                    <td>${mo.CONTRATACAO || '-'}${mo.EMPRESA ? ` • ${mo.EMPRESA}` : ''}</td>
+                    <td>${mo.CONTRATACAO || '-'}${mo.EMPRESA ? `   ${mo.EMPRESA}` : ''}</td>
                 </tr>
             `).join('');
             crewBody.innerHTML = rows || '<tr class="empty-row"><td colspan="3">Sem registro de mão de obra.</td></tr>';
@@ -271,9 +327,9 @@ function initApp() {
         if (equipmentList) {
             equipmentList.innerHTML = (dados.EQUIPAMENTOS || []).map(eq => `
                 <div class="equipment-item">
-                    <strong>${eq.QUANTIDADE || '-'}x ${eq.NOME || '-'}</strong>
-                    <p>Status: ${eq.STATUS || '-'}</p>
-                    <p>Alocação: ${eq.ALOCACAO || '-'}</p>
+                    <strong>${eq.QUANTIDADE || '-'} x ${eq.NOME || '-'}</strong>
+                    <p>Status:&nbsp;${eq.STATUS || '-'}</p>
+                    <p>Alocação:&nbsp;${eq.ALOCACAO || '-'}</p>
                 </div>
             `).join('') || '<div class="equipment-item"><p>Sem equipamentos registrados.</p></div>';
         }
@@ -327,17 +383,17 @@ function initApp() {
         setText("report-subtitle", "Não há relatório para esta data.");
         setText("report-number", '-');
         setText("report-date", '-');
-        setHTML("report-work", '<strong>Obra:</strong> -');
-        setHTML("report-client", '<strong>Cliente:</strong> -');
-        setHTML("report-created", '<strong>Criado por:</strong> -');
-        setHTML("report-approved", '<strong>Aprovação:</strong> -');
+        setHTML("report-work", '<strong>Obra:</strong>&nbsp; -');
+        setHTML("report-client", '<strong>Cliente:</strong>&nbsp; -');
+        setHTML("report-created", '<strong>Criado por:</strong>&nbsp; -');
+        setHTML("report-approved", '<strong>Aprovação:</strong>&nbsp; -');
         setText("meta-responsavel", '-');
         setText("meta-status", 'INEXISTENTE');
         const metaStatus = document.getElementById("meta-status");
         if (metaStatus) metaStatus.className = 'status-badge status-inexistente';
         setText("meta-status-small", 'INEXISTENTE');
-        setText("report-start", 'Início: -');
-        setText("report-end", 'Término: -');
+        setText("report-start", '-');
+        setText("report-end", '-');
         setText("report-deadline", 'Dados de prazo não informados');
         setText("report-progress", 'Progresso não informado');
         const progressFill = document.getElementById("progress-fill");
@@ -360,4 +416,4 @@ function initApp() {
     }
 }
 
-document.addEventListener("DOMContentLoaded", initApp);
+//document.addEventListener("DOMContentLoaded", initApp);
