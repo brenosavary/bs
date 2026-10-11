@@ -241,7 +241,7 @@ html, body {
 /* KPI Container */
 .kpi-container {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0.75rem;
     padding: 0.75rem 1rem;
     background: var(--background);
@@ -250,7 +250,7 @@ html, body {
 
 @media (max-width: 480px) {
     .kpi-container {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: 1fr;
     }
 }
 
@@ -262,10 +262,45 @@ html, body {
 
 .kpi-card {
     background: var(--surface);
-    padding: 0.6rem 0.75rem;
     border-radius: var(--radius);
     border: 1px solid var(--border);
     box-shadow: var(--shadow-sm);
+    overflow: hidden;
+}
+
+.kpi-card-title {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.35rem 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: #fff;
+}
+
+.kpi-title--blue  { background: #3B82F6; }
+.kpi-title--green { background: #10B981; }
+.kpi-title--red   { background: #EF4444; }
+
+.kpi-card-body {
+    padding: 0.5rem 0.75rem 0.6rem;
+}
+
+.kpi-card-detalhes {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+    padding-top: 0.55rem;
+}
+
+.kpi-item-detalhe {
+    min-width: 0;
+}
+
+.kpi-value-secundario {
+    font-size: 0.9rem;
 }
 
 .kpi-label {
@@ -276,11 +311,89 @@ html, body {
     margin-bottom: 0.1rem;
 }
 
+.btn-grafico-meta {
+    padding: 0.2rem 0.4rem;
+    border: 1px solid var(--primary-light);
+    border-radius: var(--radius);
+    background: yellow;
+    color: var(--primary-color);
+    font-size: 0.6rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-grafico-meta:hover {
+    background: rgba(234, 255, 0, 0.63);
+}
+
 .kpi-value {
     font-size: 1.1rem;
     font-weight: 700;
     color: var(--primary-color);
     font-family: 'IBM Plex Mono', monospace;
+}
+
+.kpi-meta-status {
+    margin-top: 0.35rem;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.kpi-meta-status.positivo {
+    color: var(--success);
+}
+
+.kpi-meta-status.negativo {
+    color: var(--error);
+}
+
+#kpi-faturamento {
+    font-size: 1.4rem;
+    border-bottom: 2px solid;
+}
+
+.meta-diaria-explicacao {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: var(--surface);
+    border-radius: var(--radius);
+    color: var(--text-secondary);
+    font-size: 0.72rem;
+    line-height: 1.45;
+}
+
+.meta-diaria-explicacao strong {
+    color: var(--text-primary);
+    font-size: 0.75rem;
+}
+
+.meta-feriados-encontrados {
+    margin-top: 0.75rem;
+    color: var(--text-secondary);
+    font-size: 0.72rem;
+    line-height: 1.45;
+}
+
+.meta-feriados-encontrados strong {
+    color: var(--text-primary);
+    font-size: 0.75rem;
+}
+
+.meta-feriados-encontrados ul {
+    margin: 0.35rem 0 0;
+    padding-left: 1.15rem;
+}
+
+.meta-feriados-encontrados p {
+    margin-top: 0.35rem;
+}
+
+.kpi-subvalue {
+    margin-top: 0.02rem;
+    font-size: 0.77rem;
+    font-weight: 500;
+    color: var(--text-secondary);
 }
 
 /* Dashboard Content */
@@ -303,14 +416,37 @@ html, body {
     margin-bottom: 0.25rem;
 }
 
+.btn-limpar-filtro {
+    float: right;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--primary-color);
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.72rem;
+    text-decoration: underline;
+}
+
+.chart-aviso {
+    padding: 1rem;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    color: var(--text-secondary);
+    text-align: center;
+    background: var(--background);
+}
+
 .filtro-data {
     display: flex;
     align-items: center;
-    gap: 0.25rem;
+    gap: 0.5rem;
+    flex-wrap: wrap;
 }
 
 .filtro-data input {
-    flex: 1;
+    flex: 1 1 120px;
+    min-width: 120px;
     padding: 0.4rem 0.5rem;
     border: 1px solid var(--border);
     border-radius: var(--radius);
@@ -318,6 +454,28 @@ html, body {
     background-color: var(--background);
     color: var(--text-primary);
     transition: all 0.2s ease;
+}
+
+.filtro-data span {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    text-align: center;
+}
+
+@media (max-width: 480px) {
+    .filtro-data {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.4rem;
+    }
+    .filtro-data span {
+        display: block;
+        margin: 0.1rem 0;
+    }
+    .filtro-data input {
+        width: 100%;
+        min-width: 0;
+    }
 }
 
 .filtro-data input:hover {
@@ -401,24 +559,35 @@ html, body {
 
 .chart-wrapper {
     background: var(--background);
-    padding: 0.75rem;
     border-radius: var(--radius);
     border: 1px solid var(--border);
     box-shadow: var(--shadow-sm);
-    min-width: 0; /* Permite que o flex/grid item encolha abaixo do conteúdo */
-    overflow: hidden; /* Garante que o conteúdo não vaze o wrapper */
+    min-width: 0;
+    overflow: hidden;
 }
 
 .chart-wrapper.full-width {
     grid-column: 1 / -1;
 }
 
-.chart-wrapper h3 {
-    font-size: 0.85rem;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-    padding-bottom: 0.25rem;
-    border-bottom: 1px solid var(--border);
+.chart-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.4rem 0.75rem;
+    color: #fff;
+    margin-bottom: 0;
+}
+
+.chart-title--blue    { background: #3B82F6; }
+.chart-title--green   { background: #10B981; }
+.chart-title--red     { background: #EF4444; }
+.chart-title--neutral { background: #6B7280; }
+
+.chart-wrapper > .chart-scroll-container,
+.chart-wrapper > .chart-placeholder {
+    padding: 0.5rem 0.5rem 0.25rem;
 }
 
 .chart-placeholder {
@@ -555,6 +724,13 @@ html, body {
     border: 1px solid var(--border);
     box-shadow: var(--shadow-sm);
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.tabela-container table {
+    width: 100%;
+    min-width: 100%;
+    table-layout: auto;
 }
 
 .tabela-header {
@@ -589,18 +765,27 @@ html, body {
 .tabela-vendas th {
     padding: 0.4rem;
     text-align: left;
+    vertical-align: top;
     background-color: var(--surface);
     border-bottom: 2px solid var(--border);
+    white-space: normal;
+    word-break: break-word;
 }
 
 .tabela-vendas td {
     padding: 0.3rem 0.4rem;
     border-bottom: 1px solid var(--border);
+    white-space: normal;
+    word-break: break-word;
+}
+
+.tabela-vendas th .col-filter {
+    display: block;
+    width: 100%;
+    margin-top: 0.35rem;
 }
 
 .col-filter {
-    width: 100%;
-    margin-top: 0.2rem;
     padding: 0.2rem;
     font-size: 0.6rem;
     border: 1px solid var(--border);
@@ -615,7 +800,16 @@ html, body {
 .tabela-vendas .numero {
     text-align: right;
     font-family: 'IBM Plex Mono', monospace;
+    white-space: nowrap;
 }
+
+#tabela-vendas td:not(.numero) {
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    min-width: 0;
+}
+
 
 /* Responsive */
 @media (max-width: 1100px) {
@@ -741,21 +935,31 @@ html, body {
 /* Highcharts Styles */
 .highcharts-container {
     font-family: 'Poppins', sans-serif;
+    font-size: 14.4px !important;
 }
 
 .highcharts-title {
     font-family: 'Poppins', sans-serif;
     font-weight: 600;
+    font-size: 1.2rem !important; /* 16px * 1.2 = 19.2px */
 }
 
 .highcharts-axis-labels {
     font-family: 'Poppins', sans-serif;
-    font-size: 0.875rem;
+    font-size: 1.05rem !important; /* 0.875rem * 1.2 = 1.05rem */
 }
 
 .highcharts-data-labels {
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.75rem;
+    font-size: 0.9rem !important; /* 0.75rem * 1.2 = 0.9rem */
+}
+
+.highcharts-legend-item text {
+    font-size: 14.4px !important;
+}
+
+.highcharts-tooltip text {
+    font-size: 14.4px !important;
 }
 
 /* Scrollbar Customizado */
@@ -881,4 +1085,43 @@ html, body {
     font-size: 0.8rem;
     color: var(--text-secondary);
     border-left: 4px solid var(--primary-color);
+}
+
+/* ============================================================
+   PRIORIDADE VISUAL: DataLabels de Faturamento sobre Custo
+   ============================================================ */
+
+/* Eleva todos os grupos de dataLabel do Highcharts */
+.highcharts-data-labels {
+    z-index: 5;
+}
+
+/* O label de faturamento (marcado com .datalabel-fat) deve
+   sempre ficar acima do label de custo */
+.highcharts-data-label span.datalabel-fat,
+.highcharts-data-label .datalabel-fat {
+    position: relative !important;
+    z-index: 9999 !important;
+}
+
+/* Eleva o grupo SVG pai do label de faturamento
+   (Highcharts aplica série-0 ou série-1 etc. via classe) */
+.highcharts-series-0 .highcharts-data-labels,
+.highcharts-series-1 .highcharts-data-labels {
+    z-index: 20 !important;
+}
+
+/* Mantém custo abaixo */
+.highcharts-series-2 .highcharts-data-labels {
+    z-index: 10 !important;
+}
+
+/* Para o caso de modo Separado (3 séries: Produto, Serviço, Custo) */
+.highcharts-series-0 .highcharts-data-label,
+.highcharts-series-1 .highcharts-data-label {
+    z-index: 20 !important;
+}
+.highcharts-series-2 .highcharts-data-label,
+.highcharts-series-3 .highcharts-data-label {
+    z-index: 10 !important;
 }

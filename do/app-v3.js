@@ -206,7 +206,7 @@ function initApp() {
     }
 
 function fetchDiario(data) {
-    const baseUrl = 'https://odin.reviverepossivel.com/ODIN5/MAN_DO_dados.rule';
+    const baseUrl = '../../../MAN_DO_dados.rule';
     const obraId = parent.ebfGetSessionAttribute('vsManObraID');
     const requestUrl = `${baseUrl}?sys=WWW&data=${encodeURIComponent(data)}&id_obra=${encodeURIComponent(obraId)}`;
 
@@ -269,6 +269,10 @@ function fetchDiario(data) {
         return 'status-default';
     }
 
+    function formatPeriodoTexto(text) {
+        return text.replace(/(\d+)\s*dias/i, '$1 dias');
+    }
+
     function renderizarDiario(dados) {
         setText("obra-nome", dados.OBRA_NOME || "Relatório de Obra");
         setText("report-subtitle", dados.OBRA_NOME ? `Data do diário: ${formatDateLabel(dados.DATA_DIARIO)}` : "Aguarde enquanto carregamos os dados.");
@@ -297,8 +301,8 @@ function fetchDiario(data) {
         const totalPeriodo = !isNaN(prazoDias) && !isNaN(diasDecorridos) ? prazoDias + diasDecorridos : null;
         const progressoPercentual = totalPeriodo ? Math.min(100, Math.max(0, Math.round((diasDecorridos / totalPeriodo) * 100))) : 0;
 
-        setText("report-deadline", !isNaN(prazoDias) ? `${prazoDias} dias restantes` : 'Dados de prazo não informados');
-        setText("report-progress", !isNaN(diasDecorridos) ? `${diasDecorridos} dias decorridos` : 'Progresso não informado');
+        setText("report-deadline", formatPeriodoTexto(!isNaN(prazoDias) ? `${prazoDias} dias restantes` : 'Dados de prazo não informados'));
+        setText("report-progress", formatPeriodoTexto(!isNaN(diasDecorridos) ? `${diasDecorridos} dias decorridos` : 'Progresso não informado'));
 
         const progressFill = document.getElementById("progress-fill");
         if (progressFill) {
@@ -412,6 +416,7 @@ function fetchDiario(data) {
         setHTML("incident-table-body", '<tr class="empty-row"><td colspan="4">Sem ocorrências registradas no dia.</td></tr>');
         setText("txt-observacoes", 'Nenhum dado inserido.');
         setHTML("gallery-fotos", '<div class="photo-card"><p style="padding: 18px;">Sem fotos.</p></div>');
+        alert(`${mensagem}`);
         console.warn(mensagem);
     }
 }

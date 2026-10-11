@@ -41,10 +41,6 @@ button {
     z-index: 50;
 }
 
-.page-header-left {
-    max-width: 720px;
-}
-
 .eyebrow {
     display: inline-block;
     margin-bottom: 8px;
