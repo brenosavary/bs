@@ -35,7 +35,7 @@ Highcharts.setOptions({
     }
 });
 
-const USAR_DADOS_LOCAIS_TESTE = false;
+const USAR_DADOS_LOCAIS_TESTE = true;
 const ARQUIVO_DADOS_LOCAIS_TESTE = 'teste_dados\\DASHBOARD_COMERCIAL_II_dados.json';
 const ARQUIVO_METAS_LOCAIS_TESTE = 'teste_dados\\DASHBOARD_COMERCIAL_II_metas.json';
 const ARQUIVO_CONFIG_LOCAL_TESTE = 'teste_dados\\DASHBOARD_COMERCIAL_II_config.json';
@@ -1176,9 +1176,20 @@ async function calcularAnaliseMetaMesAtual() {
     const metaAtingida = faltaParaMeta === 0;
     const acimaDaMedia = metaAtingida || (mediaDiaria > 0 && necessarioPorDia <= mediaDiaria);
 
+    // Total de dias úteis no mês inteiro para calcular a meta por dia
+    let diasUteisTotais = 0;
+    const totalDiasNoMes = new Date(ano, mes, 0).getDate();
+    for (let dia = 1; dia <= totalDiasNoMes; dia++) {
+        const dataCheck = new Date(ano, mes - 1, dia);
+        if (ehDiaUtil(dataCheck, feriados)) diasUteisTotais += 1;
+    }
+    const metaPorDia = diasUteisTotais > 0 ? totalMetas / diasUteisTotais : 0;
+
     return {
         diasComVenda: diasComVenda.length,
         diasUteisRestantes,
+        diasUteisTotais,
+        metaPorDia,
         mediaDiaria,
         necessarioPorDia,
         metaAtingida,
@@ -1189,6 +1200,7 @@ async function calcularAnaliseMetaMesAtual() {
 
 function atualizarIndicadorMetaDiaria(analise) {
     const indicador = document.getElementById('kpi-meta-diaria');
+    if (!indicador) return;
     if (!analise) {
         indicador.hidden = true;
         return;
@@ -1202,13 +1214,17 @@ function atualizarIndicadorMetaDiaria(analise) {
     }
 
     if (analise.metaAtingida) {
-        indicador.innerHTML = '<p style="color:black">&#128202; ' + analise.diasComVenda + ' dias com vendas, média diária: ' + formatarMoeda(analise.mediaDiaria) + '. (no mês atual restam ' + analise.diasUteisRestantes + ' dias).</p><p style="color:green">&#127919; Meta do período atingida.</p>';
+        indicador.innerHTML = `<p style="color:black">&#128202; ${analise.diasComVenda} dias com vendas, média diária: ${formatarMoeda(analise.mediaDiaria)}. (no mês atual restam ${analise.diasUteisRestantes} dias).</p><p style="color:green">&#127919; Meta do período atingida. &#9989;</p>`;
         return;
     }
 
-    const situacao = analise.acimaDaMedia ? 'abaixo da média diária' : 'acima da média diária';
-    const corProjecao = analise.acimaDaMedia ? 'green' : 'red';
-    indicador.innerHTML = `<p style="color:black">&#128202; ${analise.diasComVenda} dias com vendas, média diária: ${formatarMoeda(analise.mediaDiaria)}. (no mês atual restam ${analise.diasUteisRestantes} dias).</p><p style="color:${corProjecao}">&#127919; Precisa vender por dia para bater meta: ${formatarMoeda(analise.necessarioPorDia)}/dia (${situacao})</p>`;
+    const percMedia = analise.mediaDiaria > 0 ? (analise.necessarioPorDia / analise.mediaDiaria) * 100 : 0;
+    const percMediaFormatado = percMedia.toFixed(1).replace('.', ',');
+    const ehMaiorQueMedia = analise.mediaDiaria === 0 ? (analise.necessarioPorDia > 0) : (analise.necessarioPorDia > analise.mediaDiaria);
+    const emoji = ehMaiorQueMedia ? '&#10060;' : '&#9989;';
+    const corProjecao = ehMaiorQueMedia ? 'red' : 'green';
+
+    indicador.innerHTML = `<p style="color:black">&#128202; ${analise.diasComVenda} dias com vendas, média diária: ${formatarMoeda(analise.mediaDiaria)}. (no mês atual restam ${analise.diasUteisRestantes} dias).</p><p style="color:${corProjecao}">&#127919; Precisa vender por dia para bater meta: ${formatarMoeda(analise.necessarioPorDia)}/dia (${percMediaFormatado}% da média diária ${emoji})</p>`;
 }
 
 async function atualizarKPIs() {
@@ -1221,14 +1237,23 @@ async function atualizarKPIs() {
     document.getElementById('kpi-faturamento').textContent = formatarMoeda(kpis.faturamento);
     document.getElementById('kpi-ticket').textContent = formatarMoeda(kpis.ticketMedio);
     document.getElementById('kpi-pedidos').textContent = `${state.numPedidos.toLocaleString('pt-BR')} pedidos`;
-    document.getElementById('kpi-meta').textContent = formatarMoeda(kpis.totalMetas);
+
     const percentualMeta = document.getElementById('kpi-meta-alcancado');
     percentualMeta.textContent = `${kpis.percentualAlcancado.toFixed(1).replace('.', ',')}% alcançado`;
     percentualMeta.classList.toggle('positivo', kpis.totalMetas > 0 && kpis.percentualAlcancado >= 100);
     percentualMeta.classList.toggle('negativo', kpis.totalMetas > 0 && kpis.percentualAlcancado < 100);
+
     const analiseDiaria = await calcularAnaliseMetaMesAtual();
     state.detalhesMetas.analiseDiaria = analiseDiaria;
     atualizarIndicadorMetaDiaria(analiseDiaria);
+
+    const kpiMetaEl = document.getElementById('kpi-meta');
+    if (analiseDiaria && analiseDiaria.metaPorDia > 0) {
+        kpiMetaEl.innerHTML = `${formatarMoeda(kpis.totalMetas)} <span class="kpi-meta-subvalor">(${formatarMoeda(analiseDiaria.metaPorDia)} por dia)</span>`;
+    } else {
+        kpiMetaEl.textContent = formatarMoeda(kpis.totalMetas);
+    }
+
     document.getElementById('kpi-devolucao').textContent = formatarMoeda(kpis.devolucao);
     document.getElementById('kpi-custo').textContent = formatarMoeda(kpis.custo);
     document.getElementById('kpi-rentabilidade').textContent = "Rentabilidade: "+kpis.rentabilidade.toFixed(1).replace('.', ',') + '%';
@@ -1454,10 +1479,18 @@ function abrirModalProjecao() {
     let feriadosEncontrados = '';
 
     if (analise && !analise.erro) {
+        const percMedia = analise.mediaDiaria > 0 ? (analise.necessarioPorDia / analise.mediaDiaria) * 100 : 0;
+        const percMediaFormatado = percMedia.toFixed(1).replace('.', ',');
+        const ehMaiorQueMedia = analise.mediaDiaria === 0 ? (analise.necessarioPorDia > 0) : (analise.necessarioPorDia > analise.mediaDiaria);
+        const emoji = ehMaiorQueMedia ? '❌' : '✅';
         const comparacao = analise.metaAtingida
-            ? 'A meta mensal já foi alcançada.'
-            : `O valor necessário por dia está ${analise.acimaDaMedia ? 'abaixo ou igual' : 'acima'} da média dos dias já vendidos.`;
-        explicacaoMetaDiaria = '<div class="meta-diaria-explicacao">';
+            ? 'Meta do período atingida. ✅'
+            : `Precisa vender por dia para bater meta: ${formatarMoeda(analise.necessarioPorDia)}/dia (${percMediaFormatado}% da média diária ${emoji})`;
+        explicacaoMetaDiaria = `
+            <div class="meta-diaria-explicacao">
+                <p style="margin-bottom: 0.35rem;">📊 ${analise.diasComVenda} dias com vendas, média diária: ${formatarMoeda(analise.mediaDiaria)}. (no mês atual restam ${analise.diasUteisRestantes} dias).</p>
+                <p style="margin: 0; color: ${ehMaiorQueMedia ? '#EF4444' : '#10B981'};">🎯 ${comparacao}</p>
+            </div>`;
         const itensFeriados = analise.feriados || [];
         feriadosEncontrados = `
             <div id="meta-feriados-encontrados" class="meta-feriados-encontrados">
@@ -1484,7 +1517,7 @@ function abrirModalProjecao() {
         </div>
         <div class="projecao-detalhe-item">
             <span class="projecao-detalhe-label">Total de metas:</span>
-            <span class="projecao-detalhe-valor">${formatarMoeda(d.total)}</span>
+            <span class="projecao-detalhe-valor">${formatarMoeda(d.total)}${analise?.metaPorDia > 0 ? ` <span class="kpi-meta-subvalor">(${formatarMoeda(analise.metaPorDia)} por dia)</span>` : ''}</span>
         </div>
         <div class="projecao-detalhe-item" style="border-top: 2px solid var(--primary-color); margin-top: 0.5rem; padding-top: 1rem;">
             <span class="projecao-detalhe-label" style="color: var(--primary-color); font-size: 1rem;">Percentual alcançado:</span>

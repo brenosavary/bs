@@ -333,6 +333,15 @@ html, body {
     font-family: 'IBM Plex Mono', monospace;
 }
 
+.kpi-meta-subvalor {
+    font-size: 0.72em;
+    font-weight: 500;
+    color: #4B5563;
+    letter-spacing: -0.2px;
+    margin-left: 0.35rem;
+    white-space: nowrap;
+}
+
 .kpi-meta-status {
     margin-top: 0.35rem;
     color: var(--text-secondary);
@@ -361,6 +370,7 @@ html, body {
     color: var(--text-secondary);
     font-size: 0.72rem;
     line-height: 1.45;
+    display: none;
 }
 
 .meta-diaria-explicacao strong {
