@@ -35,7 +35,7 @@ Highcharts.setOptions({
     }
 });
 
-const USAR_DADOS_LOCAIS_TESTE = false;
+const USAR_DADOS_LOCAIS_TESTE = true;
 const ARQUIVO_DADOS_LOCAIS_TESTE = 'teste_dados\\DASHBOARD_COMERCIAL_II_dados.json';
 const ARQUIVO_METAS_LOCAIS_TESTE = 'teste_dados\\DASHBOARD_COMERCIAL_II_metas.json';
 const ARQUIVO_CONFIG_LOCAL_TESTE = 'teste_dados\\DASHBOARD_COMERCIAL_II_config.json';
@@ -62,7 +62,8 @@ const state = {
         DATA_INI: '2024-01-01 00:00:00.0',
         DATA_FIN: '2025-12-31 00:00:00.0',
         PED_OU_NF: 'P',
-        PED_OU_PED_E_OS: 'PP'
+        PED_OU_PED_E_OS: 'PP',
+        CONSIDERA_SABADO: 'N'
     },
     filtros: {
         dataInicio: '2024-01-01',
@@ -161,6 +162,11 @@ function parseDataLocal(valor, { endOfDay = false } = {}) {
 function formatarDataPtBR(valor) {
     const data = parseDataLocal(valor);
     return data ? data.toLocaleDateString('pt-BR') : '';
+}
+
+const NOMES_DIAS_SEMANA = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+function obterNomeDiaSemana(diaSemana) {
+    return NOMES_DIAS_SEMANA[diaSemana] || '';
 }
 
 function extrairMesISO(valor) {
@@ -1117,9 +1123,11 @@ function formatarDataISO(data) {
     return `${ano}-${mes}-${dia}`;
 }
 
-function ehDiaUtil(data, feriados) {
+function ehDiaUtil(data, feriados, consideraSabado = false) {
     const diaSemana = data.getDay();
-    return diaSemana !== 0 && diaSemana !== 6 && !feriados.has(formatarDataISO(data));
+    if (diaSemana === 0) return false;
+    if (diaSemana === 6 && !consideraSabado) return false;
+    return !feriados.has(formatarDataISO(data));
 }
 
 function calcularMetaDoMes(ano, mes) {
@@ -1148,6 +1156,7 @@ async function calcularAnaliseMetaMesAtual() {
         return { erro: true, mensagem: 'Não foi possível calcular os dias úteis.' };
     }
     const { datas: feriados, feriados: listaFeriados } = resultadoFeriados;
+    const consideraSabado = String(state.configuracao?.CONSIDERA_SABADO || '').trim().toUpperCase() === 'S';
 
     const vendasPorDia = new Map();
     filtrarVendas().forEach(venda => {
@@ -1158,17 +1167,38 @@ async function calcularAnaliseMetaMesAtual() {
         vendasPorDia.set(dataISO, (vendasPorDia.get(dataISO) || 0) + totalLinha);
     });
 
-    const diasComVenda = [...vendasPorDia.entries()]
-        .filter(([dataISO]) => ehDiaUtil(parseDataLocal(dataISO), feriados));
+    const listaDiasComVenda = [...vendasPorDia.entries()]
+        .map(([dataISO, total]) => {
+            const dataObj = parseDataLocal(dataISO);
+            return {
+                dataISO,
+                data: dataObj,
+                total,
+                diaSemana: dataObj ? dataObj.getDay() : null
+            };
+        })
+        .filter(item => item.data && ehDiaUtil(item.data, feriados, true))
+        .sort((a, b) => a.dataISO.localeCompare(b.dataISO));
+
     const faturamentoFiltrado = filtrarVendas().reduce((total, venda) => {
         return total + venda.valor_produto + venda.valor_servico;
     }, 0);
-    const mediaDiaria = diasComVenda.length > 0 ? faturamentoFiltrado / diasComVenda.length : 0;
+    const mediaDiaria = listaDiasComVenda.length > 0 ? faturamentoFiltrado / listaDiasComVenda.length : 0;
 
-    let diasUteisRestantes = 0;
+    const listaDiasRestantes = [];
     for (let data = new Date(ano, mes - 1, hoje.getDate() + 1); data <= fimMes; data.setDate(data.getDate() + 1)) {
-        if (ehDiaUtil(data, feriados)) diasUteisRestantes += 1;
+        if (ehDiaUtil(data, feriados, consideraSabado)) {
+            const dataObj = new Date(data);
+            const diaSemana = dataObj.getDay();
+            listaDiasRestantes.push({
+                dataISO: formatarDataISO(dataObj),
+                data: dataObj,
+                diaSemana,
+                ehSabado: diaSemana === 6
+            });
+        }
     }
+    const diasUteisRestantes = listaDiasRestantes.length;
 
     const totalMetas = calcularTotalMetas();
     const faltaParaMeta = Math.max(0, totalMetas - faturamentoFiltrado);
@@ -1181,19 +1211,22 @@ async function calcularAnaliseMetaMesAtual() {
     const totalDiasNoMes = new Date(ano, mes, 0).getDate();
     for (let dia = 1; dia <= totalDiasNoMes; dia++) {
         const dataCheck = new Date(ano, mes - 1, dia);
-        if (ehDiaUtil(dataCheck, feriados)) diasUteisTotais += 1;
+        if (ehDiaUtil(dataCheck, feriados, consideraSabado)) diasUteisTotais += 1;
     }
     const metaPorDia = diasUteisTotais > 0 ? totalMetas / diasUteisTotais : 0;
 
     return {
-        diasComVenda: diasComVenda.length,
+        diasComVenda: listaDiasComVenda.length,
+        listaDiasComVenda,
         diasUteisRestantes,
+        listaDiasRestantes,
         diasUteisTotais,
         metaPorDia,
         mediaDiaria,
         necessarioPorDia,
         metaAtingida,
         acimaDaMedia,
+        consideraSabado,
         feriados: listaFeriados
     };
 }
@@ -1477,6 +1510,7 @@ function abrirModalProjecao() {
     const analise = d.analiseDiaria;
     let explicacaoMetaDiaria = '';
     let feriadosEncontrados = '';
+    let secaoDatas = '';
 
     if (analise && !analise.erro) {
         const percMedia = analise.mediaDiaria > 0 ? (analise.necessarioPorDia / analise.mediaDiaria) * 100 : 0;
@@ -1502,6 +1536,80 @@ function abrirModalProjecao() {
                     }).join('')}</ul>`
                     : '<p>Nenhum feriado informado pela consulta.</p>'}
             </div>`;
+
+        const diasComVenda = analise.listaDiasComVenda || [];
+        const diasRestantes = analise.listaDiasRestantes || [];
+
+        const linhasVendas = diasComVenda.length > 0
+            ? diasComVenda.map(item => `
+                <tr>
+                    <td><strong>${formatarDataPtBR(item.dataISO)}</strong></td>
+                    <td>${obterNomeDiaSemana(item.diaSemana)}</td>
+                    <td style="text-align: right; font-weight: 600; color: var(--primary-color);">${formatarMoeda(item.total)}</td>
+                </tr>
+            `).join('')
+            : '<tr><td colspan="3" style="text-align: center; color: var(--text-secondary); padding: 0.8rem;">Nenhum dia com venda registrado no período.</td></tr>';
+
+        const linhasRestantes = diasRestantes.length > 0
+            ? diasRestantes.map(item => `
+                <tr>
+                    <td><strong>${formatarDataPtBR(item.dataISO)}</strong></td>
+                    <td>
+                        ${obterNomeDiaSemana(item.diaSemana)}
+                        ${item.ehSabado ? '<span class="badge-sabado">Sábado</span>' : ''}
+                    </td>
+                    <td style="text-align: right; font-weight: 600; color: var(--text-secondary);">${formatarMoeda(analise.necessarioPorDia)}</td>
+                </tr>
+            `).join('')
+            : '<tr><td colspan="3" style="text-align: center; color: var(--text-secondary); padding: 0.8rem;">Nenhum dia restante para encerrar o mês.</td></tr>';
+
+        const subtituloRestantes = analise.consideraSabado ? ' (inc. sábados)' : '';
+
+        secaoDatas = `
+            <div class="projecao-secao-datas">
+                <div class="projecao-bloco-datas">
+                    <div class="projecao-bloco-header">
+                        <span class="projecao-bloco-titulo">📅 Dias com Vendas (${diasComVenda.length} dias)</span>
+                        <span class="projecao-bloco-badge">Média: ${formatarMoeda(analise.mediaDiaria)}</span>
+                    </div>
+                    <div class="projecao-tabela-scroll">
+                        <table class="projecao-tabela">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Dia da Semana</th>
+                                    <th style="text-align: right;">Faturado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${linhasVendas}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="projecao-bloco-datas">
+                    <div class="projecao-bloco-header">
+                        <span class="projecao-bloco-titulo">⏳ Dias para Encerrar o Mês (${diasRestantes.length} dias${subtituloRestantes})</span>
+                        <span class="projecao-bloco-badge">Meta: ${formatarMoeda(analise.necessarioPorDia)}/dia</span>
+                    </div>
+                    <div class="projecao-tabela-scroll">
+                        <table class="projecao-tabela">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Dia da Semana</th>
+                                    <th style="text-align: right;">Meta Diária</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${linhasRestantes}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `;
     } else if (analise?.erro) {
         explicacaoMetaDiaria = `
             <div class="meta-diaria-explicacao">
@@ -1525,6 +1633,7 @@ function abrirModalProjecao() {
         </div>
         ${explicacaoMetaDiaria}
         ${feriadosEncontrados}
+        ${secaoDatas}
     `;
 
     document.getElementById('modalProjecao').classList.add('ativo');
