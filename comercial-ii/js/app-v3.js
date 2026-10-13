@@ -35,17 +35,9 @@ Highcharts.setOptions({
     }
 });
 
-const USAR_DADOS_LOCAIS_TESTE = true;
-const ARQUIVO_DADOS_LOCAIS_TESTE = 'teste_dados\\DASHBOARD_COMERCIAL_II_dados.json';
-const ARQUIVO_METAS_LOCAIS_TESTE = 'teste_dados\\DASHBOARD_COMERCIAL_II_metas.json';
-const ARQUIVO_CONFIG_LOCAL_TESTE = 'teste_dados\\DASHBOARD_COMERCIAL_II_config.json';
-const feriadosPorMes = new Map();
-
 // Estado Global
 const state = {
     vendas: [],
-    metas: [],
-    feriadosConfiguracao: [],
     configuracao: {
         POR_EMPRESA: 'S',
         POR_CIDADE: 'S',
@@ -76,7 +68,6 @@ const state = {
         rota: [],
         estado: [],
         tipo_pagamento: [],
-        prazo_pagamento: [],
         tipo_documento: [],
         status_documento: []
     },
@@ -92,7 +83,6 @@ const state = {
         rota: '',
         estado: '',
         tipo_pagamento: '',
-        prazo_pagamento: '',
         tipo_documento: '',
         status_documento: ''
     },
@@ -100,9 +90,6 @@ const state = {
         periodo: 'mes',
         tipoGrafico: 'barras',
         visualizacao: 'totalizado'
-    },
-    interface: {
-        graficoMetasVisivel: false
     },
     opcoes: {
         empresas: [],
@@ -115,7 +102,6 @@ const state = {
         rotas: [],
         estados: [],
         tipos_pagamento: [],
-        prazos_pagamento: [],
         tipos_documento: [],
         status_documento: []
     },
@@ -125,11 +111,12 @@ const state = {
         dimensao: null,
         origem: null
     },
-    detalhesMetas: {
-        faturamento: 0,
-        total: 0,
-        percentualAlcancado: 0,
-        analiseDiaria: null
+    detalhesProjecao: {
+        valorTotal: 0,
+        diasPassados: 0,
+        diasFaltantes: 0,
+        mediaDia: 0,
+        resultado: 0
     },
     numPedidos: 0
 };
@@ -221,15 +208,13 @@ document.addEventListener('DOMContentLoaded', () => {
 function obterContextoAPI() {
     const path = window.location.pathname;
     const primeiro = path.split('/').filter(Boolean)[0];
-    const systemID = typeof ebfGetSystemID === 'function' ? ebfGetSystemID() : 'REI';
+    const systemID = typeof ebfGetSystemID === 'function' ? ebfGetSystemID() : 'GRT';
     return { primeiro, systemID };
 }
 
 async function buscarVendasDaAPI(primeiro, systemID, dataInicio, dataFim) {
-    const url = USAR_DADOS_LOCAIS_TESTE
-        ? new URL(ARQUIVO_DADOS_LOCAIS_TESTE, window.location.href).href
-        : window.location.origin + '/' + primeiro + '/DASHBOARD_COMERCIAL_II_dados.rule?sys=' + systemID +
-            '&dataIni=' + normalizarDataInicioFiltro(dataInicio) + '&dataFin=' + normalizarDataFimFiltro(dataFim);
+    const url = window.location.origin + '/' + primeiro + '/DASHBOARD_COMERCIAL_II_dados.rule?sys=' + systemID +
+        '&dataIni=' + normalizarDataInicioFiltro(dataInicio) + '&dataFin=' + normalizarDataFimFiltro(dataFim);
 
     const response = await fetch(url);
 
@@ -257,7 +242,6 @@ async function buscarVendasDaAPI(primeiro, systemID, dataInicio, dataFim) {
         rota: String(v.rota || ''),
         estado: String(v.estado || ''),
         tipo_pagamento: String(v.tipo_pagamento || ''),
-        prazo_pagamento: String(v.prazo_pagamento || ''),
         tipo_documento: String(v.tipo_documento || ''),
         status_documento: String(v.status_documento || ''),
         valor: parseNumero(v.valor),
@@ -267,33 +251,6 @@ async function buscarVendasDaAPI(primeiro, systemID, dataInicio, dataFim) {
         valor_servico: parseNumero(v.valor_servico),
         custo: parseNumero(v.custo)
     }));
-}
-
-async function buscarMetasDaAPI(primeiro, systemID) {
-    try {
-        const url = USAR_DADOS_LOCAIS_TESTE
-            ? new URL(ARQUIVO_METAS_LOCAIS_TESTE, window.location.href).href
-            : window.location.origin + '/' + primeiro + '/DASHBOARD_COMERCIAL_II_metas.rule?sys=' + systemID;
-
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`Erro ao carregar metas: ${response.status}`);
-        }
-
-        const buffer = await response.arrayBuffer();
-        const data = JSON.parse(new TextDecoder('iso-8859-1').decode(buffer));
-        const metasRaw = Array.isArray(data.metas) ? data.metas : (Array.isArray(data) ? data : []);
-
-        return metasRaw.map(meta => ({
-            empresa: String(meta.empresa || ''),
-            ano: Number(meta.ano),
-            mes: Number(meta.mes),
-            valor: parseNumero(meta.valor)
-        }));
-    } catch (err) {
-        console.error('Erro ao carregar metas:', err);
-        return [];
-    }
 }
 
 function atualizarOpcoesDeFiltros() {
@@ -307,7 +264,6 @@ function atualizarOpcoesDeFiltros() {
     state.opcoes.rotas = [...new Set(state.vendas.map(v => v.rota))].sort();
     state.opcoes.estados = [...new Set(state.vendas.map(v => v.estado))].sort();
     state.opcoes.tipos_pagamento = [...new Set(state.vendas.map(v => v.tipo_pagamento))].sort();
-    state.opcoes.prazos_pagamento = [...new Set(state.vendas.map(v => v.prazo_pagamento))].sort();
     state.opcoes.tipos_documento = [...new Set(state.vendas.map(v => v.tipo_documento))].sort();
     state.opcoes.status_documento = [...new Set(state.vendas.map(v => v.status_documento))].sort();
 }
@@ -331,17 +287,6 @@ async function carregarDados() {
         }
         
         state.vendas = await buscarVendasDaAPI(primeiro, systemID, state.filtros.dataInicio, state.filtros.dataFim);
-        state.metas = await buscarMetasDaAPI(primeiro, systemID);
-
-        if (USAR_DADOS_LOCAIS_TESTE) {
-            const datas = state.vendas.map(v => extrairDataISO(v.data)).filter(Boolean).sort();
-            if (datas.length > 0) {
-                state.filtros.dataInicio = datas[0];
-                state.filtros.dataFim = datas[datas.length - 1];
-                document.getElementById('dataInicio').value = state.filtros.dataInicio;
-                document.getElementById('dataFim').value = state.filtros.dataFim;
-            }
-        }
 
         // (dados jÃ¡ carregados por buscarVendasDaAPI)
 
@@ -384,7 +329,6 @@ function popularCheckbox(id, opcoes) {
         const dimRaw = id.replace('filtro', '').toLowerCase();
         const mapaChaves = {
             tipopagamento: 'tipo_pagamento',
-            prazopagamento: 'prazo_pagamento',
             tipodocumento: 'tipo_documento',
             statusdocumento: 'status_documento'
         };
@@ -436,7 +380,6 @@ function populaSelects() {
     popularCheckbox('filtroRota', state.opcoes.rotas);
     popularCheckbox('filtroEstado', state.opcoes.estados);
     popularCheckbox('filtroTipoPagamento', state.opcoes.tipos_pagamento);
-    popularCheckbox('filtroPrazoPagamento', state.opcoes.prazos_pagamento);
     popularCheckbox('filtroTipoDocumento', state.opcoes.tipos_documento);
     popularCheckbox('filtroStatusDocumento', state.opcoes.status_documento);
 }
@@ -446,10 +389,7 @@ function populaSelects() {
 
 async function carregarConfiguracao(primeiro, systemID) {
     try {
-        const url = USAR_DADOS_LOCAIS_TESTE
-            ? new URL(ARQUIVO_CONFIG_LOCAL_TESTE, window.location.href).href
-            : window.location.origin + '/' + primeiro + '/DASHBOARD_COMERCIAL_II_config.rule?sys=' + systemID;
-        const response = await fetch(url);
+        const response = await fetch(window.location.origin + '/' + primeiro + '/DASHBOARD_COMERCIAL_II_config.rule?sys=' + systemID);
         
         // Usar o mesmo padrão de decodificação que os dados
         const buffer = await response.arrayBuffer();
@@ -461,7 +401,6 @@ async function carregarConfiguracao(primeiro, systemID) {
             const configObj = data.config[0];
             // Mesclar configurações recebidas com o estado inicial
             state.configuracao = { ...state.configuracao, ...configObj };
-            state.feriadosConfiguracao = Array.isArray(data.feriado) ? data.feriado : [];
             
             // Definir visualização inicial baseada em PED_OU_PED_E_OS
             if (state.configuracao.PED_OU_PED_E_OS === 'PP') {
@@ -477,7 +416,6 @@ async function carregarConfiguracao(primeiro, systemID) {
             }
             
             console.log("Configurações carregadas:", state.configuracao);
-            await cadastrarFeriadosAusentes(primeiro, systemID);
         }
     } catch (err) {
         console.error('Erro ao carregar configurações:', err);
@@ -489,10 +427,9 @@ async function carregarConfiguracao(primeiro, systemID) {
 // ============================================================================
 
 function aplicarVisibilidadeGraficos() {
-
     const visualizacao = document.getElementById('visualizacaoGrafico');
     if (visualizacao) {
-        const semServico = state.configuracao.PED_OU_PED_E_OS === 'PP';
+        const semServico = state.configuracao.PED_OU_PED_E_OS === 'PO';
         visualizacao.style.display = semServico ? 'none' : '';
         visualizacao.closest('.control-grupo').style.display = semServico ? 'none' : '';
     }
@@ -618,7 +555,6 @@ function inicializarEventos() {
 
     // Detalhes Projeção
     document.getElementById('btnDetalheProjecao').addEventListener('click', abrirModalProjecao);
-    document.getElementById('btnAlternarGraficoMeta').addEventListener('click', alternarGraficoMetas);
 
     // Exportar
     document.getElementById('btnExportar').addEventListener('click', exportarExcel);
@@ -689,7 +625,6 @@ function filtrarVendas(incluirFiltrosColuna = false, filtrosExtras = []) {
         const rotaOk = state.filtros.rota.length === 0 || state.filtros.rota.includes(venda.rota);
         const estadoOk = state.filtros.estado.length === 0 || state.filtros.estado.includes(venda.estado);
         const tipoPagamentoOk = state.filtros.tipo_pagamento.length === 0 || state.filtros.tipo_pagamento.includes(venda.tipo_pagamento);
-        const prazoPagamentoOk = state.filtros.prazo_pagamento.length === 0 || state.filtros.prazo_pagamento.includes(venda.prazo_pagamento);
         const tipoDocumentoOk = state.filtros.tipo_documento.length === 0 || state.filtros.tipo_documento.includes(venda.tipo_documento);
         const statusDocumentoOk = state.filtros.status_documento.length === 0 || state.filtros.status_documento.includes(venda.status_documento);
 
@@ -709,13 +644,12 @@ function filtrarVendas(incluirFiltrosColuna = false, filtrosExtras = []) {
                 venda.rota.toLowerCase().includes(state.filtrosColuna.rota) &&
                 venda.estado.toLowerCase().includes(state.filtrosColuna.estado) &&
                 venda.tipo_pagamento.toLowerCase().includes(state.filtrosColuna.tipo_pagamento) &&
-                venda.prazo_pagamento.toLowerCase().includes(state.filtrosColuna.prazo_pagamento) &&
                 venda.tipo_documento.toLowerCase().includes(state.filtrosColuna.tipo_documento) &&
                 venda.status_documento.toLowerCase().includes(state.filtrosColuna.status_documento);
         }
 
         return dentroData && empresaOk && marcaOk && vendedorOk && grupoOk && clienteOk &&
-            regiaoOk && cidadeOk && rotaOk && estadoOk && tipoPagamentoOk && prazoPagamentoOk && tipoDocumentoOk && statusDocumentoOk &&
+            regiaoOk && cidadeOk && rotaOk && estadoOk && tipoPagamentoOk && tipoDocumentoOk && statusDocumentoOk &&
             extraOk && colunaOk;
     });
 }
@@ -725,18 +659,13 @@ function filtrarVendas(incluirFiltrosColuna = false, filtrosExtras = []) {
 // ============================================================================
 
 async function buscarNumPedidos() {
-    if (USAR_DADOS_LOCAIS_TESTE) {
-        state.numPedidos = filtrarVendas().length;
-        return;
-    }
-
     const formatarMultifiltro = (arr) => {
         if (!arr || arr.length === 0) return '';
         return arr.join('|');
     };
 
     const params = new URLSearchParams({
-        sys: typeof ebfGetSystemID === 'function' ? ebfGetSystemID() : 'REI',
+        sys: typeof ebfGetSystemID === 'function' ? ebfGetSystemID() : 'GRT',
         empresas: formatarMultifiltro(state.filtros.empresa),
         vendedores: formatarMultifiltro(state.filtros.vendedor),
         marcas: formatarMultifiltro(state.filtros.marca),
@@ -747,7 +676,6 @@ async function buscarNumPedidos() {
         rotas: formatarMultifiltro(state.filtros.rota),
         estados: formatarMultifiltro(state.filtros.estado),
         tipos_pagamento: formatarMultifiltro(state.filtros.tipo_pagamento),
-        prazos_pagamento: formatarMultifiltro(state.filtros.prazo_pagamento),
         tipos_documento: formatarMultifiltro(state.filtros.tipo_documento),
         status_documento: formatarMultifiltro(state.filtros.status_documento),
         dataIni: normalizarDataInicioFiltro(state.filtros.dataInicio),
@@ -781,228 +709,53 @@ function calcularKPIs(vendas) {
     // Novo cálculo do ticket médio baseado no numPedidos da API
     const ticketMedio = state.numPedidos > 0 ? faturamento / state.numPedidos : 0;
 
-    const totalMetas = calcularTotalMetas();
-    const percentualAlcancado = totalMetas > 0 ? (faturamento / totalMetas) * 100 : 0;
-    state.detalhesMetas = { faturamento, total: totalMetas, percentualAlcancado };
+    // Lógica de Projeção: faturamento já considera devolução abatida na soma de produto + serviço
+    const valorTotal = faturamento;
+    const projecao = calcularProjecao(state.agrupamentos.periodo, state.filtros.dataFim, valorTotal);
 
-    return { faturamento, ticketMedio, totalMetas, percentualAlcancado, devolucao, custo, rentabilidade };
+    return { faturamento, ticketMedio, projecao, devolucao, custo, rentabilidade };
 }
 
-function calcularTotalMetas() {
-    const empresasSelecionadas = state.filtros.empresa;
-    const inicio = parseDataLocal(state.filtros.dataInicio);
-    const fim = parseDataLocal(state.filtros.dataFim);
-    const periodoInicial = inicio ? inicio.getFullYear() * 12 + inicio.getMonth() : -Infinity;
-    const periodoFinal = fim ? fim.getFullYear() * 12 + fim.getMonth() : Infinity;
-
-    return state.metas
-        .filter(meta => {
-            const periodoMeta = meta.ano * 12 + (meta.mes - 1);
-            const empresaOk = empresasSelecionadas.length === 0 || empresasSelecionadas.includes(meta.empresa);
-            return empresaOk && periodoMeta >= periodoInicial && periodoMeta <= periodoFinal;
-        })
-        .reduce((total, meta) => total + meta.valor, 0);
-}
-
-function feriadoEstaCadastrado(feriado) {
-    return Boolean(String(feriado?.cadastrada ?? '').trim());
-}
-
-async function consultarFeriadosGroq(cidade, uf, ano, mes) {
-    const apiKey = sessionStorage.getItem('groq_api_key');
-    if (!apiKey) throw new Error('Chave da Groq não configurada na sessão.');
-
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                Authorization: `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: 'openai/gpt-oss-20b',
-                include_reasoning: false,
-                reasoning_effort: 'low',
-                max_completion_tokens: 512,
-                response_format: { type: 'json_object' },
-                messages: [{
-                    role: 'user',
-                    content: `Retorne somente um objeto JSON no formato {"feriados":[{"data":"YYYY-MM-DD","descricao":"texto"}]} com todos os feriados de ${cidade}, ${uf}, no mês ${mes} do ano ${ano}.`
-                }]
-            })
-        });
-    if (!response.ok) throw new Error(`Erro ao consultar feriados: ${response.status}`);
-
-    const data = await response.json();
-    const escolha = data.choices?.[0];
-    const conteudo = escolha?.message?.content?.trim();
-    if (!conteudo) throw new Error(`A Groq retornou uma resposta vazia (finalização: ${escolha?.finish_reason || 'desconhecida'}).`);
-
-    let resultado;
-    try {
-        resultado = JSON.parse(conteudo);
-    } catch {
-        throw new Error('A Groq retornou uma resposta que não é JSON válido.');
+function calcularProjecao(periodo, dataFimFiltro, valorTotal) {
+    if (!dataFimFiltro) {
+        state.detalhesProjecao = { valorTotal, diasPassados: 0, diasFaltantes: 0, mediaDia: 0, resultado: valorTotal };
+        return valorTotal;
     }
 
-    if (!Array.isArray(resultado.feriados)) throw new Error('A resposta da Groq não contém a lista "feriados".');
-    return resultado.feriados
-        .map(feriado => ({ data: extrairDataISO(feriado.data), descricao: String(feriado.descricao || 'Feriado') }))
-        .filter(feriado => feriado.data);
-}
+    const [ano, mes, dia] = dataFimFiltro.split('-').map(Number);
+    let diasPassados = dia;
+    let diasFaltantes = 0;
 
-async function cadastrarFeriadosAusentes(primeiro, systemID) {
-    const hoje = new Date();
-    const ano = hoje.getFullYear();
-    const mes = hoje.getMonth() + 1;
-    const pendentes = state.feriadosConfiguracao.filter(feriado => !feriadoEstaCadastrado(feriado));
-
-    for (const feriado of pendentes) {
-        try {
-            const feriados = await consultarFeriadosGroq(feriado.cidade, feriado.uf, ano, mes);
-            const params = new URLSearchParams({
-                sys: systemID,
-                acao: 'cadastrar_feriados',
-                empresa: feriado.empresa,
-                cidade: feriado.cidade,
-                uf: feriado.uf,
-                ano,
-                mes,
-                feriados: JSON.stringify(feriados)
-            });
-            if (!USAR_DADOS_LOCAIS_TESTE) {
-                const url = window.location.origin + '/' + primeiro + '/DASHBOARD_COMERCIAL_II_config.rule?' + params.toString();
-                const response = await fetch(url);
-                if (!response.ok) throw new Error(`Erro ao cadastrar feriados: ${response.status}`);
-            }
-            feriado.cadastrada = 'S';
-            feriado.feriados = feriados;
-        } catch (err) {
-            console.error(`Erro ao cadastrar feriados da empresa ${feriado.empresa}:`, err);
-        }
-    }
-}
-
-async function buscarFeriados(ano, mes) {
-    const empresas = [...state.filtros.empresa].sort();
-    const chave = `${ano}-${String(mes).padStart(2, '0')}:${empresas.join('|') || 'todas'}`;
-    if (feriadosPorMes.has(chave)) return feriadosPorMes.get(chave);
-
-    try {
-        const cadastros = state.feriadosConfiguracao.filter(feriado => empresas.length === 0 || empresas.includes(feriado.empresa));
-        const feriadosSemDuplicidade = new Map();
-        cadastros.flatMap(cadastro => Array.isArray(cadastro.feriados) ? cadastro.feriados : [])
-            .map(feriado => ({ data: extrairDataISO(feriado.data), descricao: String(feriado.descricao || 'Feriado') }))
-            .filter(feriado => feriado.data?.startsWith(`${ano}-${String(mes).padStart(2, '0')}`))
-            .forEach(feriado => feriadosSemDuplicidade.set(`${feriado.data}|${feriado.descricao}`, feriado));
-        const feriados = [...feriadosSemDuplicidade.values()];
-        const resultado = { datas: new Set(feriados.map(feriado => feriado.data)), feriados };
-        feriadosPorMes.set(chave, resultado);
-        return resultado;
-    } catch (err) {
-        console.error('Erro ao buscar feriados:', err);
-        return null;
-    }
-}
-
-function formatarDataISO(data) {
-    const ano = data.getFullYear();
-    const mes = String(data.getMonth() + 1).padStart(2, '0');
-    const dia = String(data.getDate()).padStart(2, '0');
-    return `${ano}-${mes}-${dia}`;
-}
-
-function ehDiaUtil(data, feriados) {
-    const diaSemana = data.getDay();
-    return diaSemana !== 0 && diaSemana !== 6 && !feriados.has(formatarDataISO(data));
-}
-
-function calcularMetaDoMes(ano, mes) {
-    const empresasSelecionadas = state.filtros.empresa;
-    return state.metas
-        .filter(meta => meta.ano === ano && meta.mes === mes)
-        .filter(meta => empresasSelecionadas.length === 0 || empresasSelecionadas.includes(meta.empresa))
-        .reduce((total, meta) => total + meta.valor, 0);
-}
-
-async function calcularAnaliseMetaMesAtual() {
-    const hoje = new Date();
-    const ano = hoje.getFullYear();
-    const mes = hoje.getMonth() + 1;
-    const inicioFiltro = parseDataLocal(state.filtros.dataInicio);
-    const fimFiltro = parseDataLocal(state.filtros.dataFim, { endOfDay: true });
-    const inicioMes = new Date(ano, mes - 1, 1);
-    const fimMes = new Date(ano, mes, 0, 23, 59, 59, 999);
-
-    if (!inicioFiltro || !fimFiltro || inicioFiltro > fimMes || fimFiltro < inicioMes || hoje.getDate() >= fimMes.getDate()) {
-        return null;
+    if (periodo === 'ano') {
+        const dataReferencia = new Date(ano, mes - 1, dia);
+        const inicioAno = new Date(ano, 0, 1);
+        const fimAno = new Date(ano, 11, 31);
+        diasPassados = Math.round((dataReferencia - inicioAno) / (1000 * 60 * 60 * 24)) + 1;
+        diasFaltantes = Math.round((fimAno - dataReferencia) / (1000 * 60 * 60 * 24));
+    } else {
+        const ultimoDiaMes = new Date(ano, mes, 0).getDate();
+        diasPassados = dia;
+        diasFaltantes = ultimoDiaMes - dia;
     }
 
-    const resultadoFeriados = await buscarFeriados(ano, mes);
-    if (!resultadoFeriados) {
-        return { erro: true, mensagem: 'Não foi possível calcular os dias úteis.' };
-    }
-    const { datas: feriados, feriados: listaFeriados } = resultadoFeriados;
-
-    const vendasPorDia = new Map();
-    filtrarVendas().forEach(venda => {
-        const dataVenda = parseDataLocal(venda.data);
-        if (!dataVenda || dataVenda > hoje || dataVenda.getFullYear() !== ano || dataVenda.getMonth() + 1 !== mes) return;
-        const dataISO = formatarDataISO(dataVenda);
-        const totalLinha = venda.valor_produto + venda.valor_servico;
-        vendasPorDia.set(dataISO, (vendasPorDia.get(dataISO) || 0) + totalLinha);
-    });
-
-    const diasComVenda = [...vendasPorDia.entries()]
-        .filter(([dataISO]) => ehDiaUtil(parseDataLocal(dataISO), feriados));
-    const faturamentoFiltrado = filtrarVendas().reduce((total, venda) => {
-        return total + venda.valor_produto + venda.valor_servico;
-    }, 0);
-    const mediaDiaria = diasComVenda.length > 0 ? faturamentoFiltrado / diasComVenda.length : 0;
-
-    let diasUteisRestantes = 0;
-    for (let data = new Date(ano, mes - 1, hoje.getDate() + 1); data <= fimMes; data.setDate(data.getDate() + 1)) {
-        if (ehDiaUtil(data, feriados)) diasUteisRestantes += 1;
+    if (diasPassados <= 0) {
+        state.detalhesProjecao = { valorTotal, diasPassados, diasFaltantes, mediaDia: 0, resultado: valorTotal };
+        return valorTotal;
     }
 
-    const totalMetas = calcularTotalMetas();
-    const faltaParaMeta = Math.max(0, totalMetas - faturamentoFiltrado);
-    const necessarioPorDia = diasUteisRestantes > 0 ? faltaParaMeta / diasUteisRestantes : 0;
-    const metaAtingida = faltaParaMeta === 0;
-    const acimaDaMedia = metaAtingida || (mediaDiaria > 0 && necessarioPorDia <= mediaDiaria);
+    const mediaDia = valorTotal / diasPassados;
+    const resultado = valorTotal + (mediaDia * diasFaltantes);
 
-    return {
-        diasComVenda: diasComVenda.length,
-        diasUteisRestantes,
-        mediaDiaria,
-        necessarioPorDia,
-        metaAtingida,
-        acimaDaMedia,
-        feriados: listaFeriados
+    // Salvar detalhes para o modal
+    state.detalhesProjecao = {
+        valorTotal,
+        diasPassados,
+        diasFaltantes,
+        mediaDia,
+        resultado
     };
-}
 
-function atualizarIndicadorMetaDiaria(analise) {
-    const indicador = document.getElementById('kpi-meta-diaria');
-    if (!analise) {
-        indicador.hidden = true;
-        return;
-    }
-
-    indicador.hidden = false;
-    indicador.classList.remove('positivo', 'negativo');
-    if (analise.erro) {
-        indicador.textContent = analise.mensagem;
-        return;
-    }
-
-    if (analise.metaAtingida) {
-        indicador.innerHTML = '<p style="color:black">&#128202; ' + analise.diasComVenda + ' dias com vendas, média diária: ' + formatarMoeda(analise.mediaDiaria) + '. (no mês atual restam ' + analise.diasUteisRestantes + ' dias).</p><p style="color:green">&#127919; Meta do período atingida.</p>';
-        return;
-    }
-
-    const situacao = analise.acimaDaMedia ? 'abaixo da média diária' : 'acima da média diária';
-    const corProjecao = analise.acimaDaMedia ? 'green' : 'red';
-    indicador.innerHTML = `<p style="color:black">&#128202; ${analise.diasComVenda} dias com vendas, média diária: ${formatarMoeda(analise.mediaDiaria)}. (no mês atual restam ${analise.diasUteisRestantes} dias).</p><p style="color:${corProjecao}">&#127919; Precisa vender por dia para bater meta: ${formatarMoeda(analise.necessarioPorDia)}/dia (${situacao})</p>`;
+    return resultado;
 }
 
 async function atualizarKPIs() {
@@ -1014,15 +767,7 @@ async function atualizarKPIs() {
 
     document.getElementById('kpi-faturamento').textContent = formatarMoeda(kpis.faturamento);
     document.getElementById('kpi-ticket').textContent = formatarMoeda(kpis.ticketMedio);
-    document.getElementById('kpi-pedidos').textContent = `${state.numPedidos.toLocaleString('pt-BR')} pedidos`;
-    document.getElementById('kpi-meta').textContent = formatarMoeda(kpis.totalMetas);
-    const percentualMeta = document.getElementById('kpi-meta-alcancado');
-    percentualMeta.textContent = `${kpis.percentualAlcancado.toFixed(1).replace('.', ',')}% alcançado`;
-    percentualMeta.classList.toggle('positivo', kpis.totalMetas > 0 && kpis.percentualAlcancado >= 100);
-    percentualMeta.classList.toggle('negativo', kpis.totalMetas > 0 && kpis.percentualAlcancado < 100);
-    const analiseDiaria = await calcularAnaliseMetaMesAtual();
-    state.detalhesMetas.analiseDiaria = analiseDiaria;
-    atualizarIndicadorMetaDiaria(analiseDiaria);
+    document.getElementById('kpi-projecao').textContent = formatarMoeda(kpis.projecao);
     document.getElementById('kpi-devolucao').textContent = formatarMoeda(kpis.devolucao);
     document.getElementById('kpi-custo').textContent = formatarMoeda(kpis.custo);
     document.getElementById('kpi-rentabilidade').textContent = "Rentabilidade: "+kpis.rentabilidade.toFixed(1).replace('.', ',') + '%';
@@ -1130,9 +875,6 @@ async function renderizarGraficos() {
     // Período Principal
     renderizarGraficoPeriodo('chart-periodo', agruparPorPeriodo(vendas, state.agrupamentos.periodo));
     document.getElementById('titulo-periodo').textContent = `Faturamento por ${state.agrupamentos.periodo === 'ano' ? 'Ano' : 'Mês'}`;
-    if (state.interface.graficoMetasVisivel) {
-        renderizarGraficoMetasMensais(vendas);
-    }
     await cederAoNavegador();
 
     // Dimensões
@@ -1148,139 +890,6 @@ async function renderizarGraficos() {
         renderizarGraficoDimensao(containerId, agruparPorDimensao(vendas, dimensao, 10), dimensao);
         await cederAoNavegador();
     }
-}
-
-function alternarGraficoMetas() {
-    state.interface.graficoMetasVisivel = !state.interface.graficoMetasVisivel;
-    const wrapper = document.getElementById('grafico-metas-wrapper');
-    const botao = document.getElementById('btnAlternarGraficoMeta');
-    wrapper.hidden = !state.interface.graficoMetasVisivel;
-    botao.textContent = state.interface.graficoMetasVisivel ? 'Ocultar gráfico' : 'Ver gráfico';
-    botao.title = state.interface.graficoMetasVisivel ? 'Ocultar gráfico mensal de metas' : 'Exibir gráfico mensal de metas';
-
-    if (state.interface.graficoMetasVisivel) {
-        renderizarGraficoMetasMensais(filtrarVendas());
-    }
-}
-
-function obterDadosGraficoMetasMensais(vendas) {
-    const inicio = parseDataLocal(state.filtros.dataInicio);
-    const fim = parseDataLocal(state.filtros.dataFim);
-    const empresas = state.filtros.empresa;
-    const meses = new Map();
-
-    vendas.forEach(venda => {
-        const data = parseDataLocal(venda.data);
-        if (!data) return;
-        const chave = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
-        const item = meses.get(chave) || { periodo: chave, faturamento: 0, meta: 0 };
-        item.faturamento += venda.valor_produto + venda.valor_servico;
-        meses.set(chave, item);
-    });
-
-    state.metas
-        .filter(meta => empresas.length === 0 || empresas.includes(meta.empresa))
-        .filter(meta => {
-            const dataMeta = new Date(meta.ano, meta.mes - 1, 1);
-            return (!inicio || dataMeta >= new Date(inicio.getFullYear(), inicio.getMonth(), 1)) &&
-                (!fim || dataMeta <= new Date(fim.getFullYear(), fim.getMonth(), 1));
-        })
-        .forEach(meta => {
-            const chave = `${meta.ano}-${String(meta.mes).padStart(2, '0')}`;
-            const item = meses.get(chave) || { periodo: chave, faturamento: 0, meta: 0 };
-            item.meta += meta.valor;
-            meses.set(chave, item);
-        });
-
-    return [...meses.values()].sort((a, b) => a.periodo.localeCompare(b.periodo));
-}
-
-function renderizarGraficoMetasMensais(vendas) {
-    const dados = obterDadosGraficoMetasMensais(vendas);
-    Highcharts.chart('chart-metas-mensais', {
-        chart: {
-            type: 'column',
-            backgroundColor: 'transparent',
-            scrollablePlotArea: { minWidth: window.innerWidth < 768 ? 600 : 0 }
-        },
-        title: { text: null },
-        xAxis: { categories: dados.map(item => item.periodo), crosshair: true },
-        yAxis: {
-            title: { text: null },
-            labels: { format: 'R$ {value:,.0f}' }
-        },
-        tooltip: {
-            shared: true,
-            useHTML: true,
-            formatter: function () {
-                const item = dados[this.points[0].point.index];
-                const percentual = item.meta > 0 ? (item.faturamento / item.meta) * 100 : 0;
-                return `<b>${item.periodo}</b><br>Faturamento: <b>${formatarMoeda(item.faturamento)}</b><br>Meta: <b>${formatarMoeda(item.meta)}</b><br>Alcançado: <b>${percentual.toFixed(1).replace('.', ',')}%</b>`;
-            }
-        },
-        plotOptions: {
-            column: { borderWidth: 0, borderRadius: 3 },
-            series: {
-                dataLabels: {
-                    enabled: true,
-                    formatter: function () { return this.y > 0 ? abreviarValor(this.y) : null; },
-                    style: { textOutline: 'none', fontSize: '10px' }
-                }
-            },
-            scatter: {
-                dataLabels: { enabled: false },
-                enableMouseTracking: false
-            }
-        },
-        series: [
-            {
-                name: 'Faturamento',
-                data: dados.map(item => item.faturamento),
-                color: '#3B82F6'
-            },
-            {
-                name: 'Meta',
-                data: dados.map(item => item.meta),
-                color: '#10B981'
-            },
-            {
-                name: '% Alcançado',
-                type: 'scatter',
-                linkedTo: ':previous',
-                showInLegend: false,
-                data: dados.map((item, i) => {
-                    const pct = item.meta > 0 ? (item.faturamento / item.meta) * 100 : 0;
-                    const metaBatida = pct >= 100;
-                    return {
-                        x: i,
-                        y: Math.max(item.faturamento, item.meta) / 2,
-                        pct,
-                        metaBatida
-                    };
-                }),
-                marker: { enabled: false },
-                dataLabels: {
-                    enabled: true,
-                    useHTML: true,
-                    formatter: function () {
-                        const { pct, metaBatida } = this.point;
-                        if (pct === 0) return null;
-                        const cor   = metaBatida ? '#065F46' : '#991B1B';
-                        const bg    = metaBatida ? '#D1FAE5'  : '#FEE2E2';
-                        const borda = metaBatida ? '#6EE7B7'  : '#FCA5A5';
-                        const icone = metaBatida ? '&#x2705;' : '&#x274C;';
-                        return `<div style="display:flex;flex-direction:column;align-items:center;gap:2px;">` +
-                               `<div style="width:56px;height:56px;border-radius:50%;background:${bg};border:2px solid ${borda};display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.15);">` +
-                               `<span style="color:${cor};font-size:13px;font-weight:800;line-height:1;">${pct.toFixed(1).replace('.', ',')}%</span>` +
-                               `<span style="color:${cor};font-size:11px;line-height:1;margin-top:3.5px;">${icone}</span>` +
-                               `</div></div>`;
-                    },
-                    style: { textOutline: 'none' }
-                }
-            }
-        ],
-        credits: { enabled: false }
-    });
 }
 
 function renderizarGraficoPeriodo(containerId, dados, type = 'column') {
@@ -1329,22 +938,7 @@ function renderizarGraficoPeriodo(containerId, dados, type = 'column') {
             index: idx
         })),
         color: '#EF4444',
-        stack: 'custo',
-        dataLabels: {
-            enabled: true,
-            useHTML: true,
-            formatter: function () {
-                if (this.y <= 0) return null;
-                const valorAbrev = abreviarValor(this.y);
-                if (state.agrupamentos?.periodo !== 'mes') return valorAbrev;
-
-                const rentabilidade = 100 - (this.point.pct || 0);
-                return '<span style="background-color: rgba(239,68,68,0.08); padding: 2px 6px; border-radius: 4px; font-weight: 700; display: inline-block;">' +
-                    valorAbrev + ' <span style="color:#10B981;">' + rentabilidade.toFixed(1).replace('.', ',') + '%</span></span>';
-            },
-            inside: false,
-            style: { textOutline: 'none' }
-        }
+        stack: 'custo'
     });
 
     Highcharts.chart(containerId, {
@@ -1414,10 +1008,8 @@ function renderizarGraficoPeriodo(containerId, dados, type = 'column') {
                         html += 'Serviço: R$ ' + point.y.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + '<br>';
                     } else if (point.series.name === 'Faturamento') {
                         html += 'Faturamento: R$ ' + point.y.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + '<br>';
-                        if (state.configuracao.PED_OU_PED_E_OS !== 'PP') {
-                            html += '&nbsp;&nbsp;• Produto: R$ ' + item.valor_produto.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + '<br>';
-                            html += '&nbsp;&nbsp;• Serviço: R$ ' + item.valor_servico.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + '<br>';
-                        }
+                        html += '&nbsp;&nbsp;• Produto: R$ ' + item.valor_produto.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + '<br>';
+                        html += '&nbsp;&nbsp;• Serviço: R$ ' + item.valor_servico.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + '<br>';
                     } else if (point.series.name === 'Custo') {
                         const rentabilidade = item.valor_total > 0 ? ((item.valor_total - item.custo) / item.valor_total * 100) : 0;
                         html += 'Custo: R$ ' + point.y.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + ' (' + rentabilidade.toFixed(1) + '% de rentabilidade)<br>';
@@ -1679,48 +1271,34 @@ function fecharModalAnalitico() {
 }
 
 function abrirModalProjecao() {
-    const d = state.detalhesMetas;
+    const d = state.detalhesProjecao;
     const content = document.getElementById('detalhes-projecao-content');
-    const analise = d.analiseDiaria;
-    let explicacaoMetaDiaria = '';
-    let feriadosEncontrados = '';
-
-    if (analise && !analise.erro) {
-        const comparacao = analise.metaAtingida
-            ? 'A meta mensal já foi alcançada.'
-            : `O valor necessário por dia está ${analise.acimaDaMedia ? 'abaixo ou igual' : 'acima'} da média dos dias já vendidos.`;
-        explicacaoMetaDiaria = '<div class="meta-diaria-explicacao">';
-        const itensFeriados = analise.feriados || [];
-        feriadosEncontrados = `
-            <div class="meta-feriados-encontrados">
-                <strong>Feriados considerados no mês atual</strong>
-                ${itensFeriados.length > 0
-                    ? `<ul>${itensFeriados.map(feriado => `<li>${formatarDataPtBR(feriado.data)} — ${escaparHTML(feriado.descricao)}</li>`).join('')}</ul>`
-                    : '<p>Nenhum feriado informado pela consulta.</p>'}
-            </div>`;
-    } else if (analise?.erro) {
-        explicacaoMetaDiaria = `
-            <div class="meta-diaria-explicacao">
-                <strong>Meta diária indisponível</strong><br>
-                A análise depende da consulta de feriados para identificar corretamente os dias úteis restantes.
-            </div>`;
-    }
     
     content.innerHTML = `
         <div class="projecao-detalhe-item">
-            <span class="projecao-detalhe-label">Faturamento atual:</span>
-            <span class="projecao-detalhe-valor">${formatarMoeda(d.faturamento)}</span>
+            <span class="projecao-detalhe-label">Faturamento Atual - Devolução:</span>
+            <span class="projecao-detalhe-valor">${formatarMoeda(d.valorTotal)}</span>
         </div>
         <div class="projecao-detalhe-item">
-            <span class="projecao-detalhe-label">Total de metas:</span>
-            <span class="projecao-detalhe-valor">${formatarMoeda(d.total)}</span>
+            <span class="projecao-detalhe-label">Dias Decorridos:</span>
+            <span class="projecao-detalhe-valor">${d.diasPassados} dias</span>
+        </div>
+        <div class="projecao-detalhe-item">
+            <span class="projecao-detalhe-label">Média Diária:</span>
+            <span class="projecao-detalhe-valor">${formatarMoeda(d.mediaDia)}</span>
+        </div>
+        <div class="projecao-detalhe-item">
+            <span class="projecao-detalhe-label">Dias Restantes:</span>
+            <span class="projecao-detalhe-valor">${d.diasFaltantes} dias</span>
         </div>
         <div class="projecao-detalhe-item" style="border-top: 2px solid var(--primary-color); margin-top: 0.5rem; padding-top: 1rem;">
-            <span class="projecao-detalhe-label" style="color: var(--primary-color); font-size: 1rem;">Percentual alcançado:</span>
-            <span class="projecao-detalhe-valor" style="color: var(--primary-color); font-size: 1.1rem;">${d.percentualAlcancado.toFixed(1).replace('.', ',')}%</span>
+            <span class="projecao-detalhe-label" style="color: var(--primary-color); font-size: 1rem;">Projeção Final:</span>
+            <span class="projecao-detalhe-valor" style="color: var(--primary-color); font-size: 1.1rem;">${formatarMoeda(d.resultado)}</span>
         </div>
-        ${explicacaoMetaDiaria}
-        ${feriadosEncontrados}
+        <div class="projecao-formula">
+            <strong>Fórmula:</strong><br>
+            Projeção = Faturamento Atual + (Média Diária × Dias Restantes)
+        </div>
     `;
 
     document.getElementById('modalProjecao').classList.add('ativo');
@@ -1768,7 +1346,6 @@ function renderizarTabelaAnalitica(cliente = null, dimensao = null, origem = nul
             <td>${v.rota}</td>
             <td>${v.estado}</td>
             <td>${v.tipo_pagamento}</td>
-            <td>${v.prazo_pagamento}</td>
             <td>${v.tipo_documento}</td>
             <td>${v.status_documento}</td>
             <td class="numero">${formatarMoeda(v.valor_produto)}</td>
@@ -1793,7 +1370,7 @@ function renderizarTabelaAnalitica(cliente = null, dimensao = null, origem = nul
 
     tfoot.innerHTML = `
         <tr>
-            <td colspan="14">TOTAIS (${vendas.length} registros)</td>
+            <td colspan="13">TOTAIS (${vendas.length} registros)</td>
             <td class="numero">${formatarMoeda(totais.valorProduto)}</td>
             <td class="numero">${formatarMoeda(totais.valorServico)}</td>
             <td class="numero">${formatarMoeda(totais.total)}</td>
@@ -1809,12 +1386,6 @@ function renderizarTabelaAnalitica(cliente = null, dimensao = null, origem = nul
 
 function formatarMoeda(valor) {
     return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-}
-
-function escaparHTML(valor) {
-    const elemento = document.createElement('div');
-    elemento.textContent = String(valor);
-    return elemento.innerHTML;
 }
 
 function abreviarValor(valor) {
@@ -1869,8 +1440,7 @@ function exportarExcel() {
             'Cidade': v.cidade,
             'Rota': v.rota,
             'Estado': v.estado,
-            'Prazo Pagamento': v.tipo_pagamento,
-            'Tipo Pagamento': v.prazo_pagamento,
+            'Tipo Pagamento': v.tipo_pagamento,
             'Tipo Documento': v.tipo_documento,
             'Status Documento': v.status_documento,
             'Valor Produto': v.valor_produto,
