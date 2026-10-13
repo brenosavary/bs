@@ -35,7 +35,7 @@ Highcharts.setOptions({
     }
 });
 
-const USAR_DADOS_LOCAIS_TESTE = true;
+const USAR_DADOS_LOCAIS_TESTE = false;
 const ARQUIVO_DADOS_LOCAIS_TESTE = 'teste_dados\\DASHBOARD_COMERCIAL_II_dados.json';
 const ARQUIVO_METAS_LOCAIS_TESTE = 'teste_dados\\DASHBOARD_COMERCIAL_II_metas.json';
 const ARQUIVO_CONFIG_LOCAL_TESTE = 'teste_dados\\DASHBOARD_COMERCIAL_II_config.json';
