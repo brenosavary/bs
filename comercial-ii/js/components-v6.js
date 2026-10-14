@@ -205,6 +205,7 @@
                             <thead>
                                 <tr>
                                     <th>Data <input type="text" class="col-filter" data-col="data" placeholder="Filtrar..."></th>
+                                    <th>Nº Pedido <input type="text" class="col-filter" data-col="numero_pedido" placeholder="Filtrar..."></th>
                                     <th>Empresa <input type="text" class="col-filter" data-col="empresa" placeholder="Filtrar..."></th>
                                     <th>Marca <input type="text" class="col-filter" data-col="marca" placeholder="Filtrar..."></th>
                                     <th>Vendedor <input type="text" class="col-filter" data-col="vendedor" placeholder="Filtrar..."></th>

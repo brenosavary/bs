@@ -35,7 +35,7 @@ Highcharts.setOptions({
     }
 });
 
-const USAR_DADOS_LOCAIS_TESTE = false;
+const USAR_DADOS_LOCAIS_TESTE = true;
 const ARQUIVO_DADOS_LOCAIS_TESTE = 'teste_dados\\DASHBOARD_COMERCIAL_II_dados.json';
 const ARQUIVO_METAS_LOCAIS_TESTE = 'teste_dados\\DASHBOARD_COMERCIAL_II_metas.json';
 const ARQUIVO_CONFIG_LOCAL_TESTE = 'teste_dados\\DASHBOARD_COMERCIAL_II_config.json';
@@ -84,6 +84,7 @@ const state = {
     },
     filtrosColuna: {
         data: '',
+        numero_pedido: '',
         empresa: '',
         marca: '',
         vendedor: '',
@@ -254,6 +255,9 @@ async function buscarVendasDaAPI(primeiro, systemID, dataInicio, dataFim) {
     const vendasRaw = Array.isArray(data.vendas) ? data.vendas : (Array.isArray(data) ? data : []);
     return vendasRaw.map(v => ({
         ...v,
+        // A API pode enviar o identificador com nomes diferentes conforme a origem.
+        // O "id" preserva a compatibilidade com os dados de teste legados.
+        numero_pedido: String(v.numero_pedido ?? v.numeroPedido ?? v.num_pedido ?? v.pedido ?? v.id ?? ''),
         empresa: String(v.empresa || ''),
         marca: String(v.marca || ''),
         vendedor: String(v.vendedor || ''),
@@ -289,13 +293,13 @@ async function buscarMetasDaAPI(primeiro, systemID) {
 
         const buffer = await response.arrayBuffer();
         const data = JSON.parse(new TextDecoder('iso-8859-1').decode(buffer));
-        const metasRaw = Array.isArray(data.config) ? data.config : (Array.isArray(data) ? data : []);
+        const metasRaw = Array.isArray(data.metas) ? data.metas : (Array.isArray(data) ? data : []);
 
         return metasRaw.map(meta => ({
-            empresa: String(meta.empresa_nome || ''),
+            empresa: String(meta.empresa || ''),
             ano: Number(meta.ano),
             mes: Number(meta.mes),
-            valor: parseNumero(meta.valor_meta)
+            valor: parseNumero(meta.valor)
         }));
     } catch (err) {
         console.error('Erro ao carregar metas:', err);
@@ -715,6 +719,7 @@ function filtrarVendas(incluirFiltrosColuna = false, filtrosExtras = []) {
         if (incluirFiltrosColuna) {
             const dataStr = formatarDataPtBR(venda.data);
             colunaOk = dataStr.toLowerCase().includes(state.filtrosColuna.data) &&
+                venda.numero_pedido.toLowerCase().includes(state.filtrosColuna.numero_pedido) &&
                 venda.empresa.toLowerCase().includes(state.filtrosColuna.empresa) &&
                 venda.marca.toLowerCase().includes(state.filtrosColuna.marca) &&
                 venda.vendedor.toLowerCase().includes(state.filtrosColuna.vendedor) &&
@@ -741,14 +746,10 @@ function filtrarVendas(incluirFiltrosColuna = false, filtrosExtras = []) {
 // ============================================================================
 
 async function buscarNumPedidos() {
-    if (USAR_DADOS_LOCAIS_TESTE) {
-        state.numPedidos = filtrarVendas().length;
-        return;
-    }
 
     const formatarMultifiltro = (arr) => {
         if (!arr || arr.length === 0) return '';
-        return arr.join('|');
+        return '$$' + arr.join('$$') + '$$';
     };
 
     const params = new URLSearchParams({
@@ -780,6 +781,10 @@ async function buscarNumPedidos() {
     } catch (err) {
         console.error('Erro ao buscar numPedidos:', err);
         state.numPedidos = 0;
+        if (USAR_DADOS_LOCAIS_TESTE) {
+            state.numPedidos = filtrarVendas().length;
+            return;
+        }
     }
 }
 
@@ -1041,19 +1046,6 @@ async function cadastrarFeriadosAusentes(primeiro, systemID) {
                     : 'http://localhost';
                 const contexto = primeiro || 'REI';
                 const url = `${host}/${contexto}/DASHBOARD_COMERCIAL_II_config.rule?${params.toString()}`;
-
-                console.log(`%c[URL GET PRONTA PARA TESTE] Empresa: ${empresaObj.empresa} (${grupo.cidade}/${grupo.uf})`, 'color: #3B82F6; font-weight: bold;');
-                console.log(url);
-                console.log('Parâmetros decodificados:', {
-                    sys: systemID,
-                    acao: 'cadastrar_feriados',
-                    empresa: empresaObj.empresa,
-                    cidade: grupo.cidade,
-                    uf: grupo.uf,
-                    ano,
-                    mes,
-                    feriados: feriados
-                });
 
                 if (!USAR_DADOS_LOCAIS_TESTE) {
                     const response = await fetch(url);
@@ -1511,6 +1503,9 @@ function abrirModalProjecao() {
     let explicacaoMetaDiaria = '';
     let feriadosEncontrados = '';
     let secaoDatas = '';
+    const subtituloMesAtual = analise && !analise.erro
+        ? '<p class="modal-subtitulo">Acompanhamento do mês atual</p>'
+        : '';
 
     if (analise && !analise.erro) {
         const percMedia = analise.mediaDiaria > 0 ? (analise.necessarioPorDia / analise.mediaDiaria) * 100 : 0;
@@ -1619,6 +1614,7 @@ function abrirModalProjecao() {
     }
     
     content.innerHTML = `
+        ${subtituloMesAtual}
         <div class="projecao-detalhe-item">
             <span class="projecao-detalhe-label">Faturamento atual:</span>
             <span class="projecao-detalhe-valor">${formatarMoeda(d.faturamento)}</span>
@@ -1647,7 +1643,7 @@ function fecharModalProjecao() {
 
 async function renderizarTabelaComSpinner() {
     const container = document.getElementById('tabelaVendas');
-    if (container) container.innerHTML = '<tr><td colspan="18" style="text-align:center; padding: 2rem;">Carregando...</td></tr>';
+    if (container) container.innerHTML = '<tr><td colspan="20" style="text-align:center; padding: 2rem;">Carregando...</td></tr>';
     mostrarSpinner();
     await cederAoNavegador();
     try {
@@ -1671,6 +1667,7 @@ function renderizarTabelaAnalitica(cliente = null, dimensao = null, origem = nul
         return `
         <tr>
             <td>${formatarDataPtBR(v.data)}</td>
+            <td>${escaparHTML(v.numero_pedido)}</td>
             <td>${v.empresa}</td>
             <td>${v.marca}</td>
             <td>${v.vendedor}</td>
@@ -1706,7 +1703,7 @@ function renderizarTabelaAnalitica(cliente = null, dimensao = null, origem = nul
 
     tfoot.innerHTML = `
         <tr>
-            <td colspan="14">TOTAIS (${vendas.length} registros)</td>
+            <td colspan="15">TOTAIS (${vendas.length} registros)</td>
             <td class="numero">${formatarMoeda(totais.valorProduto)}</td>
             <td class="numero">${formatarMoeda(totais.valorServico)}</td>
             <td class="numero">${formatarMoeda(totais.total)}</td>
@@ -1773,6 +1770,7 @@ function exportarExcel() {
         const valorTotalLinha = v.valor_produto + v.valor_servico;
         return {
             'Data': formatarDataPtBR(v.data),
+            'Nº Pedido': v.numero_pedido,
             'Empresa': v.empresa,
             'Marca': v.marca,
             'Vendedor': v.vendedor,
