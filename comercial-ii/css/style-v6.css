@@ -1022,6 +1022,12 @@ html, body {
     background-color: #2563EB;
 }
 
+.modal-subtitulo {
+    margin: 0 0 1rem;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
 .highcharts-contextmenu {
     z-index: 99999 !important;
 }
