@@ -292,10 +292,10 @@ async function buscarMetasDaAPI(primeiro, systemID) {
         const metasRaw = Array.isArray(data.config) ? data.config : (Array.isArray(data) ? data : []);
 
         return metasRaw.map(meta => ({
-            empresa: String(meta.empresa || ''),
+            empresa: String(meta.empresa_nome || ''),
             ano: Number(meta.ano),
             mes: Number(meta.mes),
-            valor: parseNumero(meta.valor)
+            valor: parseNumero(meta.valor_meta)
         }));
     } catch (err) {
         console.error('Erro ao carregar metas:', err);
