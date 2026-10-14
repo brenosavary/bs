@@ -289,7 +289,7 @@ async function buscarMetasDaAPI(primeiro, systemID) {
 
         const buffer = await response.arrayBuffer();
         const data = JSON.parse(new TextDecoder('iso-8859-1').decode(buffer));
-        const metasRaw = Array.isArray(data.metas) ? data.metas : (Array.isArray(data) ? data : []);
+        const metasRaw = Array.isArray(data.config) ? data.config : (Array.isArray(data) ? data : []);
 
         return metasRaw.map(meta => ({
             empresa: String(meta.empresa || ''),
