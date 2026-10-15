@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 Highcharts.setOptions({
     lang: {
         months: ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'],
@@ -1794,3 +1795,5 @@ function exportarExcel() {
     XLSX.writeFile(wb, "vendas_analitico.xlsx");
 }
 
+=======
+>>>>>>> a4ebce40dc3f32f1aef918782383a77286ac371a
