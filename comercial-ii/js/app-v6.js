@@ -1,7 +1,3 @@
-// ============================================================================
-// PAINEL COMERCIAL II - JavaScript Puro
-// ============================================================================
-
 Highcharts.setOptions({
     lang: {
         months: ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'],
