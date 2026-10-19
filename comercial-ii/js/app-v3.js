@@ -108,8 +108,7 @@ const state = {
     modalCliente: {
         valorMinimo: 0,
         cliente: null,
-        dimensao: null,
-        origem: null
+        dimensao: null
     },
     detalhesProjecao: {
         valorTotal: 0,
@@ -348,25 +347,7 @@ function popularCheckbox(id, opcoes) {
                 state.filtros[dim] = checked;
             });
         });
-
-        adicionarBotaoLimparFiltro(container, dim);
     }
-}
-
-function adicionarBotaoLimparFiltro(container, dimensao) {
-    const grupo = container.closest('.filtro-grupo');
-    const label = grupo?.querySelector('label');
-    if (!label || label.querySelector('.btn-limpar-filtro')) return;
-    const botao = document.createElement('button');
-    botao.type = 'button';
-    botao.className = 'btn-limpar-filtro';
-    botao.textContent = 'Limpar';
-    botao.title = `Limpar filtro de ${label.textContent.trim()}`;
-    botao.addEventListener('click', () => {
-        state.filtros[dimensao] = [];
-        container.querySelectorAll('input:checked').forEach(input => { input.checked = false; });
-    });
-    label.appendChild(botao);
 }
 
 function populaSelects() {
@@ -427,13 +408,6 @@ async function carregarConfiguracao(primeiro, systemID) {
 // ============================================================================
 
 function aplicarVisibilidadeGraficos() {
-    const visualizacao = document.getElementById('visualizacaoGrafico');
-    if (visualizacao) {
-        const semServico = state.configuracao.PED_OU_PED_E_OS === 'PO';
-        visualizacao.style.display = semServico ? 'none' : '';
-        visualizacao.closest('.control-grupo').style.display = semServico ? 'none' : '';
-    }
-
     // Mapeamento de chaves de configuração para IDs de gráficos
     const mapeamentoGraficos = {
         'POR_EMPRESA': 'chart-empresa',
@@ -545,7 +519,7 @@ function inicializarEventos() {
     });
 
     document.getElementById('btnVerAnaliticoCliente').addEventListener('click', () => {
-        abrirModalAnalitico(state.modalCliente.cliente, state.modalCliente.dimensao, state.modalCliente.origem);
+        abrirModalAnalitico(state.modalCliente.cliente, state.modalCliente.dimensao);
     });
 
     // Fechar Modais
@@ -560,9 +534,9 @@ function inicializarEventos() {
     document.getElementById('btnExportar').addEventListener('click', exportarExcel);
     
     // Filtro de valor mínimo no modal
-    document.getElementById('btnAplicarFiltroModal')?.addEventListener('click', async () => {
+    document.getElementById('btnAplicarFiltroModal')?.addEventListener('click', () => {
         state.modalCliente.valorMinimo = Number(document.getElementById('filtroValorMinimoCliente').value) || 0;
-        await atualizarGraficosModalComSpinner();
+        atualizarGraficosModal();
     });
 
     // Adicionado: Abrir/Fechar Filtros
@@ -604,10 +578,7 @@ function inicializarEventos() {
 // FILTRAGEM DE DADOS
 // ============================================================================
 
-function filtrarVendas(incluirFiltrosColuna = false, filtrosExtras = []) {
-    const extras = Array.isArray(filtrosExtras)
-        ? filtrosExtras.filter(filtro => filtro?.valor && filtro?.dimensao)
-        : [];
+function filtrarVendas(incluirFiltrosColuna = false, clienteExtra = null, dimensaoExtra = null) {
     return state.vendas.filter(venda => {
         const dataVenda = parseDataLocal(venda.data);
         const dataInicio = parseDataLocal(state.filtros.dataInicio);
@@ -628,7 +599,10 @@ function filtrarVendas(incluirFiltrosColuna = false, filtrosExtras = []) {
         const tipoDocumentoOk = state.filtros.tipo_documento.length === 0 || state.filtros.tipo_documento.includes(venda.tipo_documento);
         const statusDocumentoOk = state.filtros.status_documento.length === 0 || state.filtros.status_documento.includes(venda.status_documento);
 
-        const extraOk = extras.every(filtro => venda[filtro.dimensao] === filtro.valor);
+        let extraOk = true;
+        if (clienteExtra && dimensaoExtra) {
+            extraOk = venda[dimensaoExtra] === clienteExtra;
+        }
 
         let colunaOk = true;
         if (incluirFiltrosColuna) {
@@ -869,27 +843,25 @@ function agruparClientesPorPeriodo(vendas, tipo) {
 // RENDERIZAÇÃO DE GRÁFICOS
 // ============================================================================
 
-async function renderizarGraficos() {
+function renderizarGraficos() {
     const vendas = filtrarVendas();
 
     // Período Principal
     renderizarGraficoPeriodo('chart-periodo', agruparPorPeriodo(vendas, state.agrupamentos.periodo));
     document.getElementById('titulo-periodo').textContent = `Faturamento por ${state.agrupamentos.periodo === 'ano' ? 'Ano' : 'Mês'}`;
-    await cederAoNavegador();
 
     // Dimensões
-    const graficos = [
-        ['chart-empresa', 'empresa'], ['chart-marca', 'marca'], ['chart-vendedor', 'vendedor'],
-        ['chart-grupo', 'grupo'], ['chart-regiao', 'regiao'], ['chart-cidade', 'cidade'],
-        ['chart-rota', 'rota'], ['chart-estado', 'estado'], ['chart-tipo-pagamento', 'tipo_pagamento'],
-        ['chart-tipo-documento', 'tipo_documento'], ['chart-status-documento', 'status_documento']
-    ];
-    for (const [containerId, dimensao] of graficos) {
-        const wrapper = document.getElementById(containerId)?.closest('.chart-wrapper');
-        if (wrapper?.style.display === 'none') continue;
-        renderizarGraficoDimensao(containerId, agruparPorDimensao(vendas, dimensao, 10), dimensao);
-        await cederAoNavegador();
-    }
+    renderizarGraficoDimensao('chart-empresa', agruparPorDimensao(vendas, 'empresa', 10), 'empresa');
+    renderizarGraficoDimensao('chart-marca', agruparPorDimensao(vendas, 'marca', 10), 'marca');
+    renderizarGraficoDimensao('chart-vendedor', agruparPorDimensao(vendas, 'vendedor', 10), 'vendedor');
+    renderizarGraficoDimensao('chart-grupo', agruparPorDimensao(vendas, 'grupo', 10), 'grupo');
+    renderizarGraficoDimensao('chart-regiao', agruparPorDimensao(vendas, 'regiao', 10), 'regiao');
+    renderizarGraficoDimensao('chart-cidade', agruparPorDimensao(vendas, 'cidade', 10), 'cidade');
+    renderizarGraficoDimensao('chart-rota', agruparPorDimensao(vendas, 'rota', 10), 'rota');
+    renderizarGraficoDimensao('chart-estado', agruparPorDimensao(vendas, 'estado', 10), 'estado');
+    renderizarGraficoDimensao('chart-tipo-pagamento', agruparPorDimensao(vendas, 'tipo_pagamento', 10), 'tipo_pagamento');
+    renderizarGraficoDimensao('chart-tipo-documento', agruparPorDimensao(vendas, 'tipo_documento', 10), 'tipo_documento');
+    renderizarGraficoDimensao('chart-status-documento', agruparPorDimensao(vendas, 'status_documento', 10), 'status_documento');
 }
 
 function renderizarGraficoPeriodo(containerId, dados, type = 'column') {
@@ -1063,8 +1035,8 @@ function renderizarGraficoDimensao(containerId, dados, dimensao) {
 
     // Calcular faturamento total geral filtrado do dashboard ou específico do modal para o cálculo exato do %
     const isModal = containerId === 'chart-cliente-total';
-    const vendasFiltradas = isModal
-        ? filtrarVendas(false, obterFiltrosModal())
+    const vendasFiltradas = isModal 
+        ? filtrarVendas(false, state.modalCliente.cliente, state.modalCliente.dimensao)
         : filtrarVendas();
     const faturamentoTotal = vendasFiltradas.reduce((sum, v) => {
         const totalLinha = v.valor_produto + v.valor_servico;
@@ -1125,7 +1097,7 @@ function renderizarGraficoDimensao(containerId, dados, dimensao) {
                     point: {
                         events: {
                             click: function () {
-                                abrirModalCliente(this.name || this.category, dimensao, obterOrigemDoClique(containerId));
+                                abrirModalCliente(this.name || this.category, dimensao);
                             }
                         }
                     }
@@ -1181,7 +1153,7 @@ function renderizarGraficoDimensao(containerId, dados, dimensao) {
                     point: {
                         events: {
                             click: function () {
-                                abrirModalCliente(this.name, dimensao, obterOrigemDoClique(containerId));
+                                abrirModalCliente(this.name, dimensao);
                             }
                         }
                     }
@@ -1201,29 +1173,15 @@ function renderizarGraficoDimensao(containerId, dados, dimensao) {
 // MODAIS E ANALÍTICO
 // ============================================================================
 
-function obterOrigemDoClique(containerId) {
-    return containerId === 'chart-cliente-total' ? state.modalCliente.origem : null;
-}
-
-function obterFiltrosModal() {
-    const filtros = state.modalCliente.origem ? [state.modalCliente.origem] : [];
-    const atual = { valor: state.modalCliente.cliente, dimensao: state.modalCliente.dimensao };
-    if (atual.valor && atual.dimensao && !filtros.some(f => f.valor === atual.valor && f.dimensao === atual.dimensao)) {
-        filtros.push(atual);
-    }
-    return filtros;
-}
-
-function abrirModalCliente(cliente, dimensao, origem = null) {
+function abrirModalCliente(cliente, dimensao) {
     state.modalCliente.cliente = cliente;
     state.modalCliente.dimensao = dimensao;
-    state.modalCliente.origem = origem || { valor: cliente, dimensao };
     state.modalCliente.valorMinimo = 0;
     document.getElementById('filtroValorMinimoCliente').value = 0;
     document.getElementById('modal-titulo').textContent = `Análise: ${cliente}`;
     document.getElementById('modalCliente').classList.add('ativo');
     document.body.style.overflow = 'hidden';
-    atualizarGraficosModalComSpinner();
+    atualizarGraficosModal();
 }
 
 function fecharModalCliente() {
@@ -1231,38 +1189,21 @@ function fecharModalCliente() {
     document.body.style.overflow = 'auto';
 }
 
-async function atualizarGraficosModal() {
-    const vendas = filtrarVendas(false, obterFiltrosModal());
+function atualizarGraficosModal() {
+    const vendas = filtrarVendas(false, state.modalCliente.cliente, state.modalCliente.dimensao);
+    const valorMinimo = state.modalCliente.valorMinimo;
 
     // Gráfico de Período no Modal (Cada linha é um cliente, eixo X são os meses)
     renderizarGraficoClientesPeriodo('chart-cliente-periodo', agruparClientesPorPeriodo(vendas, state.agrupamentos.periodo));
-    await cederAoNavegador();
 
     // Gráfico Total no Modal (Valor Total por Cliente)
     renderizarGraficoDimensao('chart-cliente-total', agruparPorDimensao(vendas, 'cliente', 15), 'cliente');
 }
 
-async function atualizarGraficosModalComSpinner() {
-    mostrarSpinner();
-    await cederAoNavegador();
-    try {
-        await atualizarGraficosModal();
-    } finally {
-        ocultarSpinner();
-    }
-}
-
-async function abrirModalAnalitico(cliente = null, dimensao = null, origem = null) {
+function abrirModalAnalitico(cliente = null, dimensao = null) {
     document.getElementById('modalAnalitico').classList.add('ativo');
     document.body.style.overflow = 'hidden';
-    mostrarSpinner();
-    await cederAoNavegador();
-    try {
-        renderizarTabelaAnalitica(cliente, dimensao, origem);
-        await cederAoNavegador();
-    } finally {
-        ocultarSpinner();
-    }
+    renderizarTabelaAnalitica(cliente, dimensao);
 }
 
 function fecharModalAnalitico() {
@@ -1310,22 +1251,14 @@ function fecharModalProjecao() {
     document.body.style.overflow = 'auto';
 }
 
-async function renderizarTabelaComSpinner() {
+function renderizarTabelaComSpinner() {
     const container = document.getElementById('tabelaVendas');
     if (container) container.innerHTML = '<tr><td colspan="18" style="text-align:center; padding: 2rem;">Carregando...</td></tr>';
-    mostrarSpinner();
-    await cederAoNavegador();
-    try {
-        renderizarTabelaAnalitica();
-        await cederAoNavegador();
-    } finally {
-        ocultarSpinner();
-    }
+    setTimeout(() => renderizarTabelaAnalitica(), 100);
 }
 
-function renderizarTabelaAnalitica(cliente = null, dimensao = null, origem = null) {
-    const filtrosExtras = origem ? [origem, { valor: cliente, dimensao }] : [{ valor: cliente, dimensao }];
-    const vendas = filtrarVendas(true, filtrosExtras);
+function renderizarTabelaAnalitica(cliente = null, dimensao = null) {
+    const vendas = filtrarVendas(true, cliente, dimensao);
     const tbody = document.getElementById('tabelaVendas');
     const tfoot = document.getElementById('tabelaVendasFooter');
 
@@ -1408,21 +1341,16 @@ function ocultarSpinner() {
 
 async function atualizarPainel() {
     await atualizarKPIs();
-    await renderizarGraficos();
+    renderizarGraficos();
 }
 
 async function atualizarPainelComSpinner() {
     mostrarSpinner();
-    await cederAoNavegador();
     try {
         await atualizarPainel();
     } finally {
         ocultarSpinner();
     }
-}
-
-function cederAoNavegador() {
-    return new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 }
 
 function exportarExcel() {
@@ -1459,21 +1387,6 @@ function exportarExcel() {
 
 function renderizarGraficoClientesPeriodo(containerId, resultado) {
     const { clientes, periodos, dados } = resultado;
-    const aviso = document.getElementById('chart-cliente-periodo-aviso');
-    const container = document.getElementById(containerId);
-
-    if (clientes.length > 5) {
-        Highcharts.charts.forEach(chart => {
-            if (chart?.renderTo === container) chart.destroy();
-        });
-        container.style.display = 'none';
-        aviso.hidden = false;
-        aviso.textContent = 'O gráfico por período é exibido somente quando há até 5 clientes.';
-        return;
-    }
-
-    container.style.display = '';
-    aviso.hidden = true;
     
     const series = clientes.map(cliente => ({
         name: cliente,

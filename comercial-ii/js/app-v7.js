@@ -1233,30 +1233,47 @@ async function atualizarKPIs() {
     state.numPedidos = contarPedidosDistintos(vendas);
     const kpis = calcularKPIs(vendas);
 
-    document.getElementById('kpi-faturamento').textContent = formatarMoeda(kpis.faturamento);
-    document.getElementById('kpi-valor-bruto').textContent = formatarMoeda(kpis.valorBruto);
-    document.getElementById('kpi-ticket').textContent = formatarMoeda(kpis.ticketMedio);
-    document.getElementById('kpi-pedidos').textContent = `${state.numPedidos.toLocaleString('pt-BR')} pedidos`;
+    const setElementText = (id, text) => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.textContent = text;
+        } else {
+            console.warn(`Elemento #${id} não encontrado no DOM.`);
+        }
+    };
+
+    setElementText('kpi-faturamento', formatarMoeda(kpis.faturamento));
+    setElementText('kpi-valor-bruto', formatarMoeda(kpis.valorBruto));
+    setElementText('kpi-ticket', formatarMoeda(kpis.ticketMedio));
+    setElementText('kpi-pedidos', `${state.numPedidos.toLocaleString('pt-BR')} pedidos`);
 
     const percentualMeta = document.getElementById('kpi-meta-alcancado');
-    percentualMeta.textContent = `${kpis.percentualAlcancado.toFixed(1).replace('.', ',')}% alcançado`;
-    percentualMeta.classList.toggle('positivo', kpis.totalMetas > 0 && kpis.percentualAlcancado >= 100);
-    percentualMeta.classList.toggle('negativo', kpis.totalMetas > 0 && kpis.percentualAlcancado < 100);
+    if (percentualMeta) {
+        percentualMeta.textContent = `${kpis.percentualAlcancado.toFixed(1).replace('.', ',')}% alcançado`;
+        percentualMeta.classList.toggle('positivo', kpis.totalMetas > 0 && kpis.percentualAlcancado >= 100);
+        percentualMeta.classList.toggle('negativo', kpis.totalMetas > 0 && kpis.percentualAlcancado < 100);
+    } else {
+        console.warn('Elemento #kpi-meta-alcancado não encontrado no DOM.');
+    }
 
     const analiseDiaria = await calcularAnaliseMetaMesAtual();
     state.detalhesMetas.analiseDiaria = analiseDiaria;
     atualizarIndicadorMetaDiaria(analiseDiaria);
 
     const kpiMetaEl = document.getElementById('kpi-meta');
-    if (analiseDiaria && analiseDiaria.metaPorDia > 0) {
-        kpiMetaEl.innerHTML = `${formatarMoeda(kpis.totalMetas)} <span class="kpi-meta-subvalor">(${formatarMoeda(analiseDiaria.metaPorDia)} por dia)</span>`;
+    if (kpiMetaEl) {
+        if (analiseDiaria && analiseDiaria.metaPorDia > 0) {
+            kpiMetaEl.innerHTML = `${formatarMoeda(kpis.totalMetas)} <span class="kpi-meta-subvalor">(${formatarMoeda(analiseDiaria.metaPorDia)} por dia)</span>`;
+        } else {
+            kpiMetaEl.textContent = formatarMoeda(kpis.totalMetas);
+        }
     } else {
-        kpiMetaEl.textContent = formatarMoeda(kpis.totalMetas);
+        console.warn('Elemento #kpi-meta não encontrado no DOM.');
     }
 
-    document.getElementById('kpi-devolucao').textContent = formatarMoeda(kpis.devolucao);
-    document.getElementById('kpi-custo').textContent = formatarMoeda(kpis.custo);
-    document.getElementById('kpi-rentabilidade').textContent = "Rentabilidade: "+kpis.rentabilidade.toFixed(1).replace('.', ',') + '%';
+    setElementText('kpi-devolucao', formatarMoeda(kpis.devolucao));
+    setElementText('kpi-custo', formatarMoeda(kpis.custo));
+    setElementText('kpi-rentabilidade', "Rentabilidade: " + kpis.rentabilidade.toFixed(1).replace('.', ',') + '%');
 }
 
 // ============================================================================
@@ -1360,7 +1377,10 @@ async function renderizarGraficos() {
 
     // Período Principal
     renderizarGraficoPeriodo('chart-periodo', agruparPorPeriodo(vendas, state.agrupamentos.periodo));
-    document.getElementById('titulo-periodo').textContent = `Faturamento por ${state.agrupamentos.periodo === 'ano' ? 'Ano' : 'Mês'}`;
+    const elTituloPeriodo = document.getElementById('titulo-periodo');
+    if (elTituloPeriodo) {
+        elTituloPeriodo.textContent = `Faturamento por ${state.agrupamentos.periodo === 'ano' ? 'Ano' : 'Mês'}`;
+    }
     if (state.interface.graficoMetasVisivel) {
         renderizarGraficoMetasMensais(vendas);
     }

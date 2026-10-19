@@ -310,27 +310,6 @@ html, body {
     margin-bottom: 0.25rem;
 }
 
-.btn-limpar-filtro {
-    float: right;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    color: var(--primary-color);
-    cursor: pointer;
-    font: inherit;
-    font-size: 0.72rem;
-    text-decoration: underline;
-}
-
-.chart-aviso {
-    padding: 1rem;
-    border: 1px dashed var(--border);
-    border-radius: var(--radius);
-    color: var(--text-secondary);
-    text-align: center;
-    background: var(--background);
-}
-
 .filtro-data {
     display: flex;
     align-items: center;
