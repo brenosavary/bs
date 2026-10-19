@@ -1,3 +1,9 @@
+/**
+ * 
+ * 19102026-1615
+ *  
+ * */  
+
 function obterDadosGraficoMetasMensais(vendas) {
     const inicio = parseDataLocal(state.filtros.dataInicio);
     const fim = parseDataLocal(state.filtros.dataFim);

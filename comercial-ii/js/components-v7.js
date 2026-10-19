@@ -1,3 +1,9 @@
+/**
+ * 
+ * 19102026-1615
+ *  
+ * */  
+
 (function () {
     function injetarComponentesUI() {
         if (document.getElementById('modalAnalitico')) {
