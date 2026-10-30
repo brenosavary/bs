@@ -1,6 +1,6 @@
 /**
  * 
- * 19102026-1615
+ * 30102026-1540
  *  
  *  */  
 
@@ -761,13 +761,13 @@ function contarPedidosDistintos(vendas) {
 }
 
 function calcularKPIs(vendas) {
-    // O valor bruto representa as vendas antes de considerar devoluções.
-    const valorBruto = vendas.reduce((sum, v) => {
+    // Produto e serviço já vêm líquidos; a devolução serve apenas para reconstruir o bruto.
+    const faturamento = vendas.reduce((sum, v) => {
         const totalLinha = v.valor_produto + v.valor_servico;
         return sum + totalLinha;
     }, 0);
     const devolucao = vendas.reduce((sum, v) => sum + v.devolucao, 0);
-    const faturamento = valorBruto - devolucao;
+    const valorBruto = faturamento + devolucao;
     const custo = vendas.reduce((sum, v) => sum + v.custo, 0);
     const quantidade = vendas.reduce((sum, v) => sum + v.quantidade, 0);
 
@@ -1791,4 +1791,3 @@ function exportarExcel() {
     XLSX.utils.book_append_sheet(wb, ws, "Vendas");
     XLSX.writeFile(wb, "vendas_analitico.xlsx");
 }
-
